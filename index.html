@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HUB POINT · Gestión de Clases</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#f5f7fb;--card:#fff;--text:#172033;--muted:#667085;--line:#dfe5ec;--primary:#0f766e;--good:#15803d;--bad:#b42318;--warn:#b54708}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);font-family:Inter,system-ui,-apple-system,Segoe UI,Arial,sans-serif;color:var(--text)}
+header{background:#fff;border-bottom:1px solid var(--line);padding:16px 20px;position:sticky;top:0;z-index:20}
+.head{max-width:1320px;margin:auto;display:flex;justify-content:space-between;gap:14px;align-items:center;flex-wrap:wrap}
+.brand b{font-size:22px} .brand span{display:block;color:var(--muted);font-size:12px;margin-top:3px}
+nav{display:flex;gap:7px;flex-wrap:wrap} button{border:1px solid var(--line);background:#fff;border-radius:10px;padding:9px 12px;font-weight:750;cursor:pointer}
+button.primary{background:var(--primary);color:#fff;border-color:var(--primary)} button.danger{background:#fff;color:var(--bad);border-color:#fecaca}
+main{max-width:1320px;margin:20px auto;padding:0 16px} .view{display:none} .view.active{display:block}
+.status{padding:11px 13px;border-radius:10px;background:#ecfdf3;color:#166534;margin-bottom:14px;font-size:14px} .status.bad{background:#fee2e2;color:#991b1b}
+.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px} input,select,textarea{padding:10px 11px;border:1px solid var(--line);border-radius:10px;background:#fff;font:inherit;width:100%} label{display:block;font-size:13px;font-weight:800;margin-bottom:5px}
+.table-wrap{overflow:auto;background:#fff;border:1px solid var(--line);border-radius:14px} table{border-collapse:collapse;width:100%;min-width:820px} th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;font-size:14px} th{background:#f8fafc}
+.slot{display:grid;grid-template-columns:82px 1fr auto;gap:12px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:8px} .time{font-size:19px;font-weight:900}
+.badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:800;background:#eef2f7} .good{background:#dcfce7;color:#166534} .warn{background:#ffedd5;color:#9a3412} .muted{color:var(--muted);font-size:12px}
+.modal{position:fixed;inset:0;background:rgba(15,23,42,.46);display:none;align-items:center;justify-content:center;padding:18px;z-index:100} .modal.open{display:flex} .modal-card{background:#fff;border-radius:16px;padding:20px;max-width:860px;width:100%;max-height:92vh;overflow:auto}
+.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px} .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px} .participant{display:grid;grid-template-columns:1fr 180px;gap:10px;padding:10px;border:1px solid var(--line);border-radius:10px;background:#f8fafc;margin-top:8px}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px} .kpi{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px} .kpi b{font-size:24px;display:block;margin-top:4px}
+@media(max-width:800px){.grid2,.participant,.kpis{grid-template-columns:1fr 1fr}.slot{grid-template-columns:65px 1fr}.slot>button{grid-column:2}}
+@media(max-width:560px){.grid2,.participant,.kpis{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header><div class="head">
+<div class="brand"><b>HUB POINT · Gestión de Clases</b><span>Base compartida online · v1.0-LIMPIO</span></div>
+<nav>
+<button class="primary" data-view="agenda">Agenda</button>
+<button data-view="alumnos">Alumnos</button>
+<button data-view="profesores">Profesores</button>
+<button data-view="pagos">Pagos</button>
+<button data-view="finanzas">Finanzas</button>
+<button data-view="reportes">Reportes Excel</button>
+</nav>
+</div></header>
+
+<main>
+<div id="status" class="status">Conectando con Supabase…</div>
+
+<section id="agenda" class="view active">
+<div class="toolbar">
+<button id="prevDay">◀</button><input id="agendaDate" type="date" style="max-width:180px"><button id="nextDay">▶</button><button id="todayBtn">Hoy</button>
+<select id="agendaTeacherFilter" style="max-width:250px"><option value="">Todos los profesores</option></select>
+<button id="newSingleBtn" class="primary">+ Clase única</button><button id="newFixedBtn">+ Clase fija semanal</button>
+</div>
+<div id="agendaList"></div>
+</section>
+
+<section id="alumnos" class="view">
+<div class="toolbar"><button id="newStudentBtn" class="primary">+ Nuevo alumno</button></div>
+<div class="table-wrap"><table><thead><tr><th>Alumno</th><th>Teléfono</th><th>Estado</th><th>Fecha baja</th><th>Observaciones</th><th>Acciones</th></tr></thead><tbody id="studentsBody"></tbody></table></div>
+</section>
+
+<section id="profesores" class="view">
+<div class="toolbar"><button id="newTeacherBtn" class="primary">+ Nuevo profesor</button></div>
+<div class="table-wrap"><table><thead><tr><th>Profesor</th><th>Teléfono</th><th>%</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="teachersBody"></tbody></table></div>
+</section>
+
+<section id="pagos" class="view">
+<div id="paymentStatus" class="status">Cargando pagos…</div>
+<div class="toolbar"><button id="newPaymentBtn" class="primary">+ Registrar pago</button><button id="reloadPaymentsBtn">Actualizar pagos</button></div>
+<div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Alumno</th><th>Profesor</th><th>Tipo</th><th>Mes abonado</th><th>Medio</th><th>Importe</th><th>Acciones</th></tr></thead><tbody id="paymentsBody"></tbody></table></div>
+</section>
+
+<section id="finanzas" class="view">
+<div class="toolbar"><input id="financeMonth" type="month" style="max-width:180px"></div>
+<div class="kpis">
+<div class="kpi"><span>Ingresos</span><b id="fIncome">$0</b></div>
+<div class="kpi"><span>Transferencias</span><b id="fTransfer">$0</b></div>
+<div class="kpi"><span>Efectivo</span><b id="fCash">$0</b></div>
+<div class="kpi"><span>A liquidar profesores</span><b id="fTeacher">$0</b></div>
+</div>
+<div class="table-wrap"><table><thead><tr><th>Profesor</th><th>Ingresos</th><th>%</th><th>A liquidar</th></tr></thead><tbody id="settlementBody"></tbody></table></div>
+</section>
+
+<section id="reportes" class="view">
+<div class="toolbar">
+<div><label>Desde</label><input id="reportFrom" type="date"></div>
+<div><label>Hasta</label><input id="reportTo" type="date"></div>
+<div><label>Profesor</label><select id="reportTeacher"></select></div>
+</div>
+<div class="toolbar"><button id="exportTeacherBtn" class="primary">Exportar profesor</button><button id="exportAllBtn">Exportar agenda general</button><button id="exportPaymentsBtn">Exportar pagos</button></div>
+</section>
+</main>
+
+<!-- ALUMNO -->
+<div id="studentModal" class="modal"><div class="modal-card"><div class="modal-head"><h3 id="studentModalTitle">Alumno</h3><button data-close="studentModal">✕</button></div>
+<input type="hidden" id="studentId"><div class="grid2"><div><label>Nombre</label><input id="studentName"></div><div><label>Teléfono</label><input id="studentPhone"></div></div><div style="margin-top:12px"><label>Observaciones</label><textarea id="studentNotes" rows="2"></textarea></div>
+<div class="toolbar" style="margin-top:14px"><button id="saveStudent" class="primary">Guardar</button></div></div></div>
+
+<div id="cancelModal" class="modal"><div class="modal-card"><div class="modal-head"><h3>Dar de baja alumno</h3><button data-close="cancelModal">✕</button></div><input type="hidden" id="cancelStudentId"><p id="cancelStudentLabel"></p>
+<div class="grid2"><div><label>Fecha de baja</label><input id="cancelDate" type="date"></div><div><label>Motivo</label><input id="cancelReason"></div></div>
+<div class="toolbar" style="margin-top:14px"><button id="confirmCancel" class="danger">Confirmar baja</button></div></div></div>
+
+<!-- PROFESOR -->
+<div id="teacherModal" class="modal"><div class="modal-card"><div class="modal-head"><h3>Profesor</h3><button data-close="teacherModal">✕</button></div><input type="hidden" id="teacherId">
+<div class="grid2"><div><label>Nombre</label><input id="teacherName"></div><div><label>Teléfono</label><input id="teacherPhone"></div><div><label>% liquidación</label><input id="teacherPct" type="number" value="50"></div><div><label>Observaciones</label><input id="teacherNotes"></div></div>
+<div class="toolbar" style="margin-top:14px"><button id="saveTeacher" class="primary">Guardar</button></div></div></div>
+
+<div id="mergeTeacherModal" class="modal"><div class="modal-card"><div class="modal-head"><h3>Fusionar profesor duplicado</h3><button data-close="mergeTeacherModal">✕</button></div><input type="hidden" id="mergeTeacherFrom"><p id="mergeTeacherFromLabel"></p><label>Profesor que querés conservar</label><select id="mergeTeacherTo"></select><div class="toolbar" style="margin-top:14px"><button id="confirmMergeTeacher" class="primary">Fusionar</button></div></div></div>
+
+<!-- CLASE -->
+<div id="classModal" class="modal"><div class="modal-card"><div class="modal-head"><h3 id="classTitle">Nueva clase</h3><button data-close="classModal">✕</button></div><input type="hidden" id="classMode">
+<div class="grid2"><div><label>Profesor</label><select id="classTeacher"></select></div><div><label>Horario</label><select id="classTime"></select></div><div><label>Fecha inicial</label><input id="classDate" type="date"></div><div><label>Cantidad de alumnos</label><select id="classStudentCount"><option value="1">1 alumno</option><option value="2">2 alumnos</option><option value="3">3 alumnos</option><option value="4">4 alumnos</option></select></div><div id="repeatEndWrap"><label>Repetir hasta</label><input id="classEnd" type="date"></div><div><label>Observaciones</label><input id="classNotes"></div></div>
+<div style="margin-top:14px"><label>Alumnos e importe a abonar</label><div id="classParticipants"></div></div>
+<div class="toolbar" style="margin-top:14px"><button id="saveClass" class="primary">Guardar clase</button></div></div></div>
+
+<div id="attendanceModal" class="modal"><div class="modal-card"><div class="modal-head"><h3>Editar clase</h3><button data-close="attendanceModal">✕</button></div>
+<input type="hidden" id="attendanceClassId"><input type="hidden" id="attendanceGroupId">
+<div class="grid2"><div><label>Fecha</label><input id="attendanceDate" type="date"></div><div><label>Horario</label><select id="attendanceTime"></select></div><div><label>Alumno</label><select id="attendanceStudent"></select></div><div><label>Profesor</label><select id="attendanceTeacher"></select></div><div><label>Estado</label><select id="attendanceStatus"><option>Pendiente</option><option>Presente</option><option>Ausente</option><option>Canceló</option><option>Recupera</option></select></div><div><label>Importe que debe abonar</label><input id="attendanceAmount" type="number" min="0"></div></div>
+<div id="groupEditWrap" style="display:none;margin-top:12px"><label style="display:flex;gap:8px;align-items:center"><input id="applyWholeGroup" type="checkbox" style="width:auto"> Aplicar fecha, horario y profesor a toda la clase grupal</label></div>
+<div class="toolbar" style="margin-top:14px"><button id="saveAttendance" class="primary">Guardar cambios</button><button id="deleteParticipantBtn" class="danger" style="display:none">Eliminar este alumno</button><button id="deleteClassBtn" class="danger">Eliminar clase</button></div>
+</div></div>
+
+<!-- PAGO -->
+<div id="paymentModal" class="modal"><div class="modal-card"><div class="modal-head"><h3 id="paymentModalTitle">Pago</h3><button data-close="paymentModal">✕</button></div><input type="hidden" id="paymentId">
+<div class="grid2"><div><label>Alumno</label><select id="payStudent"></select></div><div><label>Profesor</label><select id="payTeacher"></select></div><div><label>Tipo</label><select id="payType"><option>Mensual</option><option>Por clase</option></select></div><div><label>Mes abonado</label><input id="payMonth" type="month"></div><div><label>Fecha cobro</label><input id="payDate" type="date"></div><div><label>Medio</label><select id="payMethod"><option>Efectivo</option><option>Transferencia</option></select></div><div><label>Importe</label><input id="payAmount" type="number" min="0"></div><div><label>Observaciones</label><input id="payNotes"></div></div>
+<div class="toolbar" style="margin-top:14px"><button id="savePayment" class="primary">Guardar pago</button><button id="deletePaymentBtn" class="danger" style="display:none">Eliminar pago</button></div></div></div>
+
+<script>
+const db=window.supabase.createClient('https://jpzoaskdtgfvvfpdbqox.supabase.co','sb_publishable_yj3PONOs9YIlwYFiqiuV-A_ogIDN-Pr');
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+let students=[],teachers=[],classes=[],payments=[];
+const TIMES=Array.from({length:10},(_,i)=>`${String(8+i).padStart(2,'0')}:00`);
+
+function localISO(d=new Date()){const x=new Date(d);x.setMinutes(x.getMinutes()-x.getTimezoneOffset());return x.toISOString().slice(0,10)}
+function monthKey(v){return (v||'').slice(0,7)} function monthFirst(v){return v?monthKey(v)+'-01':null}
+function plusMonths(v,n){const d=new Date(v+'T12:00:00');d.setMonth(d.getMonth()+n);return localISO(d)}
+function money(v){return new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:0}).format(Number(v||0))}
+function sName(id){return students.find(x=>x.id===id)?.nombre||'—'} function tName(id){return teachers.find(x=>x.id===id)?.nombre||'—'}
+function dayName(v){return ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][new Date(v+'T12:00:00').getDay()]}
+function setStatus(msg,bad=false){$('#status').textContent=msg;$('#status').className='status'+(bad?' bad':'')}
+function openM(id){$('#'+id).classList.add('open')} function closeM(id){$('#'+id).classList.remove('open')}
+function weeklyDates(start,end){const out=[];let d=new Date(start+'T12:00:00'),e=new Date(end+'T12:00:00');while(d<=e){out.push(localISO(d));d.setDate(d.getDate()+7)}return out}
+
+$$('[data-close]').forEach(b=>b.onclick=()=>closeM(b.dataset.close));
+$$('.modal').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)closeM(m.id)}));
+
+async function loadPayments(){
+  try{
+    const p=await db.from('pagos').select('*').order('fecha_cobro',{ascending:false});
+    if(p.error)throw p.error;
+    payments=p.data||[];
+    $('#paymentStatus').textContent=`${payments.length} pago${payments.length===1?'':'s'} cargado${payments.length===1?'':'s'} desde Supabase`;
+    renderPayments();renderFinance();renderTeachers();renderAgenda();
+  }catch(e){$('#paymentStatus').textContent='Error pagos: '+e.message;$('#paymentStatus').className='status bad'}
+}
+
+async function refreshAll(){
+  try{
+    const [s,t,c]=await Promise.all([
+      db.from('alumnos').select('*').order('nombre'),
+      db.from('profesores').select('*').order('nombre'),
+      db.from('clases').select('*').order('fecha').order('hora')
+    ]);
+    if(s.error)throw s.error;if(t.error)throw t.error;if(c.error)throw c.error;
+    students=s.data||[];teachers=t.data||[];classes=c.data||[];
+    setStatus(`Conectado · ${students.length} alumnos · ${teachers.length} profesores · ${classes.length} clases`);
+    fillSelects();renderStudents();renderTeachers();renderAgenda();
+    await loadPayments();
+  }catch(e){setStatus('Error de conexión: '+e.message,true)}
+}
+
+function fillSelects(){
+  const sopts='<option value="">Seleccionar</option>'+students.filter(x=>x.activo!==false).map(x=>`<option value="${x.id}">${x.nombre}</option>`).join('');
+  const topts='<option value="">Seleccionar</option>'+teachers.filter(x=>x.activo!==false).map(x=>`<option value="${x.id}">${x.nombre}</option>`).join('');
+  ['payStudent','attendanceStudent'].forEach(id=>$('#'+id).innerHTML=sopts);
+  ['classTeacher','payTeacher','reportTeacher','attendanceTeacher'].forEach(id=>$('#'+id).innerHTML=topts);
+  const cur=$('#agendaTeacherFilter').value;$('#agendaTeacherFilter').innerHTML='<option value="">Todos los profesores</option>'+topts.replace('<option value="">Seleccionar</option>','');$('#agendaTeacherFilter').value=cur;
+}
+
+function switchView(id){$$('.view').forEach(v=>v.classList.toggle('active',v.id===id));$$('nav button').forEach(b=>b.classList.toggle('primary',b.dataset.view===id));if(id==='pagos')loadPayments();if(id==='finanzas')renderFinance()}
+$$('nav button').forEach(b=>b.onclick=()=>switchView(b.dataset.view));
+
+function monthPaid(a,p,date){return payments.some(x=>x.tipo_pago==='Mensual'&&x.alumno_id===a&&x.profesor_id===p&&monthKey(x.mes_abonado)===monthKey(date))}
+
+function renderAgenda(){
+  const d=$('#agendaDate').value,f=$('#agendaTeacherFilter').value;
+  const rows=classes.filter(c=>c.fecha===d&&(!f||c.profesor_id===f));
+  $('#agendaList').innerHTML=TIMES.map(time=>{
+    const slotRows=rows.filter(c=>(c.hora||'').slice(0,5)===time);
+    if(!slotRows.length)return `<div class="slot"><div class="time">${time}</div><div><b style="color:#15803d">Disponible</b><div class="muted">Espacio libre</div></div><button onclick="openClassAt('${time}')">+ Cargar</button></div>`;
+    const groups={};slotRows.forEach(c=>{const k=c.grupo_id||c.id;(groups[k] ||= []).push(c)});
+    const content=Object.values(groups).map(g=>{
+      const first=g[0];
+      return `<div style="padding:7px 0;border-bottom:1px solid var(--line)"><div><span class="badge good">Ocupado</span> <b>Prof. ${tName(first.profesor_id)}</b> · ${g.length} alumno${g.length>1?'s':''}</div>${g.map(c=>`<div style="margin-top:6px"><b>${sName(c.alumno_id)}</b> · Debe ${money(c.importe_esperado||0)} · <span class="badge ${monthPaid(c.alumno_id,c.profesor_id,c.fecha)?'good':'warn'}">${monthPaid(c.alumno_id,c.profesor_id,c.fecha)?'Pagado':'Pendiente'}</span> · <button onclick="editAttendance('${c.id}')">Editar</button></div>`).join('')}</div>`;
+    }).join('');
+    return `<div class="slot"><div class="time">${time}</div><div>${content}</div><button onclick="openClassAt('${time}')">+ Otra</button></div>`;
+  }).join('');
+}
+
+function renderStudents(){
+  $('#studentsBody').innerHTML=students.length?students.map(s=>`<tr><td><b>${s.nombre}</b></td><td>${s.telefono||''}</td><td>${s.activo!==false?'<span class="badge good">Activo</span>':'<span class="badge warn">Baja</span>'}</td><td>${s.fecha_baja||''}</td><td>${s.observaciones||''}</td><td><button onclick="editStudent('${s.id}')">Editar</button> ${s.activo!==false?`<button onclick="cancelStudent('${s.id}')">Dar de baja</button>`:`<button onclick="reactivateStudent('${s.id}')">Dar de alta</button>`}</td></tr>`).join(''):'<tr><td colspan="6">No hay alumnos.</td></tr>';
+}
+function renderTeachers(){
+  $('#teachersBody').innerHTML=teachers.length?teachers.map(t=>`<tr><td><b>${t.nombre}</b></td><td>${t.telefono||''}</td><td>${t.porcentaje_liquidacion||50}%</td><td>${t.activo!==false?'Activo':'Inactivo'}</td><td><button onclick="editTeacher('${t.id}')">Editar</button> <button onclick="mergeTeacher('${t.id}')">Fusionar</button> <button class="danger" onclick="deleteTeacher('${t.id}')">Eliminar</button></td></tr>`).join(''):'<tr><td colspan="5">No hay profesores.</td></tr>';
+}
+function renderPayments(){
+  $('#paymentsBody').innerHTML=payments.length?payments.map(p=>`<tr><td>${p.fecha_cobro||''}</td><td>${sName(p.alumno_id)}</td><td>${tName(p.profesor_id)}</td><td>${p.tipo_pago||''}</td><td>${p.mes_abonado?monthKey(p.mes_abonado):''}</td><td>${p.medio_pago||''}</td><td><b>${money(p.importe||0)}</b></td><td><button onclick="editPayment('${p.id}')">Editar</button></td></tr>`).join(''):'<tr><td colspan="8">No hay pagos registrados.</td></tr>';
+}
+function settlement(id,m){const t=teachers.find(x=>x.id===id),pct=Number(t?.porcentaje_liquidacion||50),inc=payments.filter(p=>p.profesor_id===id&&monthKey(p.fecha_cobro)===m).reduce((s,p)=>s+Number(p.importe||0),0);return{inc,pct,total:inc*pct/100}}
+function renderFinance(){
+  const m=$('#financeMonth').value||monthKey(localISO()),rows=payments.filter(p=>monthKey(p.fecha_cobro)===m);
+  const inc=rows.reduce((s,p)=>s+Number(p.importe||0),0),tr=rows.filter(p=>p.medio_pago==='Transferencia').reduce((s,p)=>s+Number(p.importe||0),0),cash=rows.filter(p=>p.medio_pago==='Efectivo').reduce((s,p)=>s+Number(p.importe||0),0);
+  let teacherTotal=0;const data=teachers.map(t=>{const x=settlement(t.id,m);teacherTotal+=x.total;return{t,...x}}).filter(x=>x.inc>0);
+  $('#fIncome').textContent=money(inc);$('#fTransfer').textContent=money(tr);$('#fCash').textContent=money(cash);$('#fTeacher').textContent=money(teacherTotal);
+  $('#settlementBody').innerHTML=data.length?data.map(x=>`<tr><td>${x.t.nombre}</td><td>${money(x.inc)}</td><td>${x.pct}%</td><td><b>${money(x.total)}</b></td></tr>`).join(''):'<tr><td colspan="4">Sin movimientos.</td></tr>';
+}
+
+// ALUMNOS
+$('#newStudentBtn').onclick=()=>{$('#studentId').value='';$('#studentName').value='';$('#studentPhone').value='';$('#studentNotes').value='';$('#studentModalTitle').textContent='Nuevo alumno';openM('studentModal')};
+window.editStudent=id=>{const s=students.find(x=>x.id===id);if(!s)return;$('#studentId').value=id;$('#studentName').value=s.nombre||'';$('#studentPhone').value=s.telefono||'';$('#studentNotes').value=s.observaciones||'';$('#studentModalTitle').textContent='Editar alumno';openM('studentModal')};
+$('#saveStudent').onclick=async()=>{const id=$('#studentId').value,obj={nombre:$('#studentName').value.trim(),telefono:$('#studentPhone').value.trim(),observaciones:$('#studentNotes').value.trim()};if(!obj.nombre)return alert('Ingresá el nombre.');const r=id?await db.from('alumnos').update(obj).eq('id',id):await db.from('alumnos').insert({...obj,activo:true});if(r.error)return alert(r.error.message);closeM('studentModal');await refreshAll()};
+window.cancelStudent=id=>{const s=students.find(x=>x.id===id);$('#cancelStudentId').value=id;$('#cancelStudentLabel').textContent=s?.nombre||'';$('#cancelDate').value=localISO();$('#cancelReason').value='';openM('cancelModal')};
+$('#confirmCancel').onclick=async()=>{const id=$('#cancelStudentId').value,date=$('#cancelDate').value,reason=$('#cancelReason').value.trim();if(!date)return alert('Elegí la fecha.');if(!confirm('Se conservará el historial anterior y se eliminarán las clases futuras desde esa fecha. ¿Confirmás?'))return;let r=await db.from('alumnos').update({activo:false,fecha_baja:date,motivo_baja:reason}).eq('id',id);if(r.error)return alert(r.error.message);r=await db.from('clases').delete().eq('alumno_id',id).gte('fecha',date);if(r.error)return alert(r.error.message);await db.from('clases_fijas').update({activa:false,fecha_fin:date}).eq('alumno_id',id).eq('activa',true);closeM('cancelModal');await refreshAll()};
+window.reactivateStudent=async id=>{if(!confirm('¿Dar de alta nuevamente?'))return;const r=await db.from('alumnos').update({activo:true,fecha_baja:null,motivo_baja:null}).eq('id',id);if(r.error)return alert(r.error.message);await refreshAll()};
+
+// PROFESORES
+$('#newTeacherBtn').onclick=()=>{$('#teacherId').value='';$('#teacherName').value='';$('#teacherPhone').value='';$('#teacherPct').value=50;$('#teacherNotes').value='';openM('teacherModal')};
+window.editTeacher=id=>{const t=teachers.find(x=>x.id===id);if(!t)return;$('#teacherId').value=id;$('#teacherName').value=t.nombre||'';$('#teacherPhone').value=t.telefono||'';$('#teacherPct').value=t.porcentaje_liquidacion||50;$('#teacherNotes').value=t.observaciones||'';openM('teacherModal')};
+$('#saveTeacher').onclick=async()=>{const id=$('#teacherId').value,obj={nombre:$('#teacherName').value.trim(),telefono:$('#teacherPhone').value.trim(),porcentaje_liquidacion:Number($('#teacherPct').value||50),observaciones:$('#teacherNotes').value.trim()};if(!obj.nombre)return alert('Ingresá nombre.');const r=id?await db.from('profesores').update(obj).eq('id',id):await db.from('profesores').insert({...obj,activo:true});if(r.error)return alert(r.error.message);closeM('teacherModal');await refreshAll()};
+window.deleteTeacher=async id=>{if(!confirm('¿Eliminar este profesor? Si tiene clases o pagos asociados, usá Fusionar.'))return;const r=await db.from('profesores').delete().eq('id',id);if(r.error)return alert('No se puede eliminar porque tiene datos asociados. Usá Fusionar.');await refreshAll()};
+window.mergeTeacher=id=>{const from=teachers.find(x=>x.id===id);if(!from)return;$('#mergeTeacherFrom').value=id;$('#mergeTeacherFromLabel').textContent='Fusionar: '+from.nombre;$('#mergeTeacherTo').innerHTML='<option value="">Seleccionar profesor</option>'+teachers.filter(x=>x.id!==id).map(x=>`<option value="${x.id}">${x.nombre}</option>`).join('');openM('mergeTeacherModal')};
+$('#confirmMergeTeacher').onclick=async()=>{const from=$('#mergeTeacherFrom').value,to=$('#mergeTeacherTo').value;if(!to)return alert('Elegí profesor.');if(!confirm('Se moverán clases y pagos al profesor elegido. ¿Confirmás?'))return;for(const table of ['clases','clases_fijas','pagos','liquidaciones_profesores']){const r=await db.from(table).update({profesor_id:to}).eq('profesor_id',from);if(r.error&&table!=='liquidaciones_profesores')return alert(r.error.message)}const d=await db.from('profesores').delete().eq('id',from);if(d.error)return alert(d.error.message);closeM('mergeTeacherModal');await refreshAll()};
+
+// CLASES
+$('#classTime').innerHTML=TIMES.map(x=>`<option>${x}</option>`).join('');$('#attendanceTime').innerHTML=$('#classTime').innerHTML;
+function renderParticipants(){const n=Number($('#classStudentCount').value||1),opts='<option value="">Seleccionar alumno</option>'+students.filter(x=>x.activo!==false).map(x=>`<option value="${x.id}">${x.nombre}</option>`).join('');$('#classParticipants').innerHTML=Array.from({length:n},(_,i)=>`<div class="participant"><div><label>Alumno ${i+1}</label><select class="groupStudent">${opts}</select></div><div><label>Importe</label><input class="groupAmount" type="number" min="0"></div></div>`).join('')}
+$('#classStudentCount').onchange=renderParticipants;
+window.openClassAt=time=>{openClass('single');$('#classTime').value=time};
+function openClass(mode){$('#classMode').value=mode;$('#classTitle').textContent=mode==='fixed'?'Nueva clase fija semanal':'Nueva clase única';$('#repeatEndWrap').style.display=mode==='fixed'?'block':'none';$('#classDate').value=$('#agendaDate').value||localISO();$('#classEnd').value=plusMonths($('#classDate').value,6);$('#classNotes').value='';$('#classStudentCount').value='1';renderParticipants();openM('classModal')}
+$('#newSingleBtn').onclick=()=>openClass('single');$('#newFixedBtn').onclick=()=>openClass('fixed');
+$('#saveClass').onclick=async()=>{const teacher=$('#classTeacher').value,date=$('#classDate').value,time=$('#classTime').value,mode=$('#classMode').value,notes=$('#classNotes').value.trim();const sels=[...document.querySelectorAll('.groupStudent')],amts=[...document.querySelectorAll('.groupAmount')],parts=sels.map((e,i)=>({student:e.value,amount:Number(amts[i].value||0)}));if(!teacher||!date||parts.some(p=>!p.student))return alert('Completá profesor, fecha y alumnos.');if(new Set(parts.map(p=>p.student)).size!==parts.length)return alert('No repitas el mismo alumno.');if(mode==='single'){const gid=crypto.randomUUID(),rows=parts.map(p=>({alumno_id:p.student,profesor_id:teacher,fecha:date,hora:time,estado:'Pendiente',observaciones:notes,grupo_id:gid,importe_esperado:p.amount}));const r=await db.from('clases').insert(rows);if(r.error)return alert(r.error.message)}else{const end=$('#classEnd').value;if(!end||end<date)return alert('Fecha final inválida.');const dates=weeklyDates(date,end),fixedIds={};for(const p of parts){const f=await db.from('clases_fijas').insert({alumno_id:p.student,profesor_id:teacher,dia_semana:new Date(date+'T12:00:00').getDay(),hora:time,fecha_inicio:date,fecha_fin:end,activa:true,observaciones:notes}).select().single();if(f.error)return alert(f.error.message);fixedIds[p.student]=f.data.id}const rows=[];for(const d of dates){const gid=crypto.randomUUID();for(const p of parts)rows.push({alumno_id:p.student,profesor_id:teacher,clase_fija_id:fixedIds[p.student],fecha:d,hora:time,estado:'Pendiente',observaciones:notes,grupo_id:gid,importe_esperado:p.amount})}const r=await db.from('clases').insert(rows);if(r.error)return alert(r.error.message)}closeM('classModal');await refreshAll()};
+
+window.editAttendance=id=>{const c=classes.find(x=>x.id===id);if(!c)return;$('#attendanceClassId').value=id;$('#attendanceGroupId').value=c.grupo_id||'';$('#attendanceDate').value=c.fecha;$('#attendanceTime').value=(c.hora||'').slice(0,5);$('#attendanceStudent').value=c.alumno_id;$('#attendanceTeacher').value=c.profesor_id;$('#attendanceStatus').value=c.estado||'Pendiente';$('#attendanceAmount').value=Number(c.importe_esperado||0);const group=c.grupo_id?classes.filter(x=>x.grupo_id===c.grupo_id):[c];$('#groupEditWrap').style.display=group.length>1?'block':'none';$('#applyWholeGroup').checked=false;$('#deleteParticipantBtn').style.display=group.length>1?'inline-block':'none';$('#deleteClassBtn').textContent=group.length>1?'Eliminar clase completa':'Eliminar clase';openM('attendanceModal')};
+$('#saveAttendance').onclick=async()=>{const id=$('#attendanceClassId').value,c=classes.find(x=>x.id===id),obj={fecha:$('#attendanceDate').value,hora:$('#attendanceTime').value,alumno_id:$('#attendanceStudent').value,profesor_id:$('#attendanceTeacher').value,estado:$('#attendanceStatus').value,importe_esperado:Number($('#attendanceAmount').value||0)};if(c?.grupo_id&&$('#applyWholeGroup').checked){let r=await db.from('clases').update({fecha:obj.fecha,hora:obj.hora,profesor_id:obj.profesor_id}).eq('grupo_id',c.grupo_id);if(r.error)return alert(r.error.message);r=await db.from('clases').update({alumno_id:obj.alumno_id,estado:obj.estado,importe_esperado:obj.importe_esperado}).eq('id',id);if(r.error)return alert(r.error.message)}else{const r=await db.from('clases').update(obj).eq('id',id);if(r.error)return alert(r.error.message)}closeM('attendanceModal');await refreshAll()};
+$('#deleteParticipantBtn').onclick=async()=>{const id=$('#attendanceClassId').value;if(!confirm('¿Eliminar solo este alumno de la clase?'))return;const r=await db.from('clases').delete().eq('id',id);if(r.error)return alert(r.error.message);closeM('attendanceModal');await refreshAll()};
+$('#deleteClassBtn').onclick=async()=>{const id=$('#attendanceClassId').value,c=classes.find(x=>x.id===id);if(!c)return;if(!confirm('¿Eliminar esta clase?'))return;const r=c.grupo_id?await db.from('clases').delete().eq('grupo_id',c.grupo_id):await db.from('clases').delete().eq('id',id);if(r.error)return alert(r.error.message);closeM('attendanceModal');await refreshAll()};
+
+// PAGOS
+$('#newPaymentBtn').onclick=()=>{$('#paymentId').value='';$('#paymentModalTitle').textContent='Registrar pago';$('#payDate').value=localISO();$('#payMonth').value=monthKey(localISO());$('#payAmount').value='';$('#payNotes').value='';$('#deletePaymentBtn').style.display='none';openM('paymentModal')};
+window.editPayment=id=>{const p=payments.find(x=>x.id===id);if(!p)return;$('#paymentId').value=id;$('#paymentModalTitle').textContent='Editar pago';$('#payStudent').value=p.alumno_id;$('#payTeacher').value=p.profesor_id;$('#payType').value=p.tipo_pago;$('#payMonth').value=p.mes_abonado?monthKey(p.mes_abonado):monthKey(localISO());$('#payDate').value=p.fecha_cobro;$('#payMethod').value=p.medio_pago;$('#payAmount').value=p.importe;$('#payNotes').value=p.observaciones||'';$('#deletePaymentBtn').style.display='inline-block';openM('paymentModal')};
+$('#savePayment').onclick=async()=>{const id=$('#paymentId').value,type=$('#payType').value,obj={alumno_id:$('#payStudent').value,profesor_id:$('#payTeacher').value,tipo_pago:type,mes_abonado:type==='Mensual'?monthFirst($('#payMonth').value):null,fecha_cobro:$('#payDate').value,importe:Number($('#payAmount').value||0),medio_pago:$('#payMethod').value,observaciones:$('#payNotes').value.trim()};if(!obj.alumno_id||!obj.profesor_id||!obj.fecha_cobro||obj.importe<=0)return alert('Completá alumno, profesor, fecha e importe.');const r=id?await db.from('pagos').update(obj).eq('id',id):await db.from('pagos').insert(obj);if(r.error)return alert(r.error.message);closeM('paymentModal');await loadPayments()};
+$('#deletePaymentBtn').onclick=async()=>{const id=$('#paymentId').value;if(!confirm('¿Eliminar este pago?'))return;const r=await db.from('pagos').delete().eq('id',id);if(r.error)return alert(r.error.message);closeM('paymentModal');await loadPayments()};
+$('#reloadPaymentsBtn').onclick=loadPayments;
+
+// REPORTES
+async function exportAgenda(teacherOnly){const from=$('#reportFrom').value,to=$('#reportTo').value,teacher=$('#reportTeacher').value;if(!from||!to)return alert('Elegí fechas.');if(teacherOnly&&!teacher)return alert('Elegí profesor.');let rows=classes.filter(c=>c.fecha>=from&&c.fecha<=to);if(teacherOnly)rows=rows.filter(c=>c.profesor_id===teacher);const data=rows.map(c=>({Fecha:c.fecha,Día:dayName(c.fecha),Horario:(c.hora||'').slice(0,5),Alumno:sName(c.alumno_id),Profesor:tName(c.profesor_id),'Importe esperado':Number(c.importe_esperado||0),Estado:c.estado,Pago:monthPaid(c.alumno_id,c.profesor_id,c.fecha)?'Pagado':'Pendiente'}));const ws=XLSX.utils.json_to_sheet(data),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Agenda');XLSX.writeFile(wb,'Agenda.xlsx')}
+$('#exportTeacherBtn').onclick=()=>exportAgenda(true);$('#exportAllBtn').onclick=()=>exportAgenda(false);
+$('#exportPaymentsBtn').onclick=()=>{const data=payments.map(p=>({Fecha:p.fecha_cobro,Alumno:sName(p.alumno_id),Profesor:tName(p.profesor_id),Tipo:p.tipo_pago,'Mes abonado':p.mes_abonado?monthKey(p.mes_abonado):'',Medio:p.medio_pago,Importe:Number(p.importe||0)}));const ws=XLSX.utils.json_to_sheet(data),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Pagos');XLSX.writeFile(wb,'Pagos.xlsx')};
+
+// FECHAS / START
+function moveDay(n){const d=new Date($('#agendaDate').value+'T12:00:00');d.setDate(d.getDate()+n);$('#agendaDate').value=localISO(d);renderAgenda()}
+$('#prevDay').onclick=()=>moveDay(-1);$('#nextDay').onclick=()=>moveDay(1);$('#todayBtn').onclick=()=>{$('#agendaDate').value=localISO();renderAgenda()};$('#agendaDate').onchange=renderAgenda;$('#agendaTeacherFilter').onchange=renderAgenda;$('#financeMonth').onchange=renderFinance;
+$('#agendaDate').value=localISO();$('#financeMonth').value=monthKey(localISO());$('#reportFrom').value=localISO();$('#reportTo').value=plusMonths(localISO(),1);
+refreshAll();setInterval(refreshAll,5000);window.addEventListener('focus',refreshAll);
+</script>
+</body></html>
