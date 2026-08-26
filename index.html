@@ -29,7 +29,7 @@ main{max-width:1320px;margin:20px auto;padding:0 16px} .view{display:none} .view
 </head>
 <body>
 <header><div class="head">
-<div class="brand"><b>HUB POINT · Gestión de Clases</b><span>Base compartida online · v1.0-LIMPIO</span></div>
+<div class="brand"><b>HUB POINT · Gestión de Clases</b><span>Base compartida online · v1.1-PAGOS-ESTABLE</span></div>
 <nav>
 <button class="primary" data-view="agenda">Agenda</button>
 <button data-view="alumnos">Alumnos</button>
@@ -167,12 +167,21 @@ async function refreshAll(){
   }catch(e){setStatus('Error de conexión: '+e.message,true)}
 }
 
+function refillSelectPreservingValue(id, html){
+  const el=$('#'+id);
+  if(!el)return;
+  const current=el.value;
+  el.innerHTML=html;
+  if(current && [...el.options].some(o=>o.value===current)) el.value=current;
+}
+
 function fillSelects(){
   const sopts='<option value="">Seleccionar</option>'+students.filter(x=>x.activo!==false).map(x=>`<option value="${x.id}">${x.nombre}</option>`).join('');
   const topts='<option value="">Seleccionar</option>'+teachers.filter(x=>x.activo!==false).map(x=>`<option value="${x.id}">${x.nombre}</option>`).join('');
-  ['payStudent','attendanceStudent'].forEach(id=>$('#'+id).innerHTML=sopts);
-  ['classTeacher','payTeacher','reportTeacher','attendanceTeacher'].forEach(id=>$('#'+id).innerHTML=topts);
-  const cur=$('#agendaTeacherFilter').value;$('#agendaTeacherFilter').innerHTML='<option value="">Todos los profesores</option>'+topts.replace('<option value="">Seleccionar</option>','');$('#agendaTeacherFilter').value=cur;
+  ['payStudent','attendanceStudent'].forEach(id=>refillSelectPreservingValue(id,sopts));
+  ['classTeacher','payTeacher','reportTeacher','attendanceTeacher'].forEach(id=>refillSelectPreservingValue(id,topts));
+  const agendaHtml='<option value="">Todos los profesores</option>'+topts.replace('<option value="">Seleccionar</option>','');
+  refillSelectPreservingValue('agendaTeacherFilter',agendaHtml);
 }
 
 function switchView(id){$$('.view').forEach(v=>v.classList.toggle('active',v.id===id));$$('nav button').forEach(b=>b.classList.toggle('primary',b.dataset.view===id));if(id==='pagos')loadPayments();if(id==='finanzas')renderFinance()}
@@ -244,7 +253,7 @@ $('#deleteParticipantBtn').onclick=async()=>{const id=$('#attendanceClassId').va
 $('#deleteClassBtn').onclick=async()=>{const id=$('#attendanceClassId').value,c=classes.find(x=>x.id===id);if(!c)return;if(!confirm('¿Eliminar esta clase?'))return;const r=c.grupo_id?await db.from('clases').delete().eq('grupo_id',c.grupo_id):await db.from('clases').delete().eq('id',id);if(r.error)return alert(r.error.message);closeM('attendanceModal');await refreshAll()};
 
 // PAGOS
-$('#newPaymentBtn').onclick=()=>{$('#paymentId').value='';$('#paymentModalTitle').textContent='Registrar pago';$('#payDate').value=localISO();$('#payMonth').value=monthKey(localISO());$('#payAmount').value='';$('#payNotes').value='';$('#deletePaymentBtn').style.display='none';openM('paymentModal')};
+$('#newPaymentBtn').onclick=()=>{$('#paymentId').value='';$('#paymentModalTitle').textContent='Registrar pago';$('#payStudent').value='';$('#payTeacher').value='';$('#payDate').value=localISO();$('#payMonth').value=monthKey(localISO());$('#payAmount').value='';$('#payNotes').value='';$('#deletePaymentBtn').style.display='none';openM('paymentModal')};
 window.editPayment=id=>{const p=payments.find(x=>x.id===id);if(!p)return;$('#paymentId').value=id;$('#paymentModalTitle').textContent='Editar pago';$('#payStudent').value=p.alumno_id;$('#payTeacher').value=p.profesor_id;$('#payType').value=p.tipo_pago;$('#payMonth').value=p.mes_abonado?monthKey(p.mes_abonado):monthKey(localISO());$('#payDate').value=p.fecha_cobro;$('#payMethod').value=p.medio_pago;$('#payAmount').value=p.importe;$('#payNotes').value=p.observaciones||'';$('#deletePaymentBtn').style.display='inline-block';openM('paymentModal')};
 $('#savePayment').onclick=async()=>{const id=$('#paymentId').value,type=$('#payType').value,obj={alumno_id:$('#payStudent').value,profesor_id:$('#payTeacher').value,tipo_pago:type,mes_abonado:type==='Mensual'?monthFirst($('#payMonth').value):null,fecha_cobro:$('#payDate').value,importe:Number($('#payAmount').value||0),medio_pago:$('#payMethod').value,observaciones:$('#payNotes').value.trim()};if(!obj.alumno_id||!obj.profesor_id||!obj.fecha_cobro||obj.importe<=0)return alert('Completá alumno, profesor, fecha e importe.');const r=id?await db.from('pagos').update(obj).eq('id',id):await db.from('pagos').insert(obj);if(r.error)return alert(r.error.message);closeM('paymentModal');await loadPayments()};
 $('#deletePaymentBtn').onclick=async()=>{const id=$('#paymentId').value;if(!confirm('¿Eliminar este pago?'))return;const r=await db.from('pagos').delete().eq('id',id);if(r.error)return alert(r.error.message);closeM('paymentModal');await loadPayments()};
@@ -259,6 +268,8 @@ $('#exportPaymentsBtn').onclick=()=>{const data=payments.map(p=>({Fecha:p.fecha_
 function moveDay(n){const d=new Date($('#agendaDate').value+'T12:00:00');d.setDate(d.getDate()+n);$('#agendaDate').value=localISO(d);renderAgenda()}
 $('#prevDay').onclick=()=>moveDay(-1);$('#nextDay').onclick=()=>moveDay(1);$('#todayBtn').onclick=()=>{$('#agendaDate').value=localISO();renderAgenda()};$('#agendaDate').onchange=renderAgenda;$('#agendaTeacherFilter').onchange=renderAgenda;$('#financeMonth').onchange=renderFinance;
 $('#agendaDate').value=localISO();$('#financeMonth').value=monthKey(localISO());$('#reportFrom').value=localISO();$('#reportTo').value=plusMonths(localISO(),1);
-refreshAll();setInterval(refreshAll,5000);window.addEventListener('focus',refreshAll);
+refreshAll();
+setInterval(()=>{if(!document.querySelector('.modal.open'))refreshAll()},5000);
+window.addEventListener('focus',()=>{if(!document.querySelector('.modal.open'))refreshAll()});
 </script>
 </body></html>
