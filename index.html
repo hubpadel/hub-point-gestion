@@ -29,7 +29,7 @@ main{max-width:1320px;margin:20px auto;padding:0 16px} .view{display:none} .view
 </head>
 <body>
 <header><div class="head">
-<div class="brand"><b>HUB POINT · Gestión de Clases</b><span>Base compartida online · v1.1-PAGOS-ESTABLE</span></div>
+<div class="brand"><b>HUB POINT · Gestión de Clases</b><span>Base compartida online · v1.2-PAGOS-PRESENTES</span></div>
 <nav>
 <button class="primary" data-view="agenda">Agenda</button>
 <button data-view="alumnos">Alumnos</button>
@@ -120,7 +120,7 @@ main{max-width:1320px;margin:20px auto;padding:0 16px} .view{display:none} .view
 
 <!-- PAGO -->
 <div id="paymentModal" class="modal"><div class="modal-card"><div class="modal-head"><h3 id="paymentModalTitle">Pago</h3><button data-close="paymentModal">✕</button></div><input type="hidden" id="paymentId">
-<div class="grid2"><div><label>Alumno</label><select id="payStudent"></select></div><div><label>Profesor</label><select id="payTeacher"></select></div><div><label>Tipo</label><select id="payType"><option>Mensual</option><option>Por clase</option></select></div><div><label>Mes abonado</label><input id="payMonth" type="month"></div><div><label>Fecha cobro</label><input id="payDate" type="date"></div><div><label>Medio</label><select id="payMethod"><option>Efectivo</option><option>Transferencia</option></select></div><div><label>Importe</label><input id="payAmount" type="number" min="0"></div><div><label>Observaciones</label><input id="payNotes"></div></div>
+<div class="grid2"><div><label>Alumno</label><select id="payStudent"></select></div><div><label>Profesor</label><select id="payTeacher"></select></div><div><label>Tipo</label><select id="payType"><option>Mensual</option><option>Por clase</option></select></div><div><label>Mes abonado</label><input id="payMonth" type="month"></div><div id="payClassWrap" style="display:none;grid-column:1/-1"><label>Clase abonada</label><select id="payClass"></select><div class="muted">Para pagos “Por clase”, elegí la clase exacta que está abonando.</div></div><div><label>Fecha cobro</label><input id="payDate" type="date"></div><div><label>Medio</label><select id="payMethod"><option>Efectivo</option><option>Transferencia</option></select></div><div><label>Importe</label><input id="payAmount" type="number" min="0"></div><div><label>Observaciones</label><input id="payNotes"></div></div>
 <div class="toolbar" style="margin-top:14px"><button id="savePayment" class="primary">Guardar pago</button><button id="deletePaymentBtn" class="danger" style="display:none">Eliminar pago</button></div></div></div>
 
 <script>
@@ -187,7 +187,19 @@ function fillSelects(){
 function switchView(id){$$('.view').forEach(v=>v.classList.toggle('active',v.id===id));$$('nav button').forEach(b=>b.classList.toggle('primary',b.dataset.view===id));if(id==='pagos')loadPayments();if(id==='finanzas')renderFinance()}
 $$('nav button').forEach(b=>b.onclick=()=>switchView(b.dataset.view));
 
-function monthPaid(a,p,date){return payments.some(x=>x.tipo_pago==='Mensual'&&x.alumno_id===a&&x.profesor_id===p&&monthKey(x.mes_abonado)===monthKey(date))}
+function paymentForClass(c){
+  return payments.find(p=>{
+    if(p.alumno_id!==c.alumno_id) return false;
+    if(p.profesor_id && p.profesor_id!==c.profesor_id) return false;
+    if(p.tipo_pago==='Mensual') return monthKey(p.mes_abonado)===monthKey(c.fecha);
+    if(p.tipo_pago==='Por clase'){
+      if(p.clase_id) return p.clase_id===c.id;
+      return p.fecha_cobro===c.fecha;
+    }
+    return false;
+  });
+}
+function classIsPaid(c){return !!paymentForClass(c)}
 
 function renderAgenda(){
   const d=$('#agendaDate').value,f=$('#agendaTeacherFilter').value;
@@ -198,12 +210,25 @@ function renderAgenda(){
     const groups={};slotRows.forEach(c=>{const k=c.grupo_id||c.id;(groups[k] ||= []).push(c)});
     const content=Object.values(groups).map(g=>{
       const first=g[0];
-      return `<div style="padding:7px 0;border-bottom:1px solid var(--line)"><div><span class="badge good">Ocupado</span> <b>Prof. ${tName(first.profesor_id)}</b> · ${g.length} alumno${g.length>1?'s':''}</div>${g.map(c=>`<div style="margin-top:6px"><b>${sName(c.alumno_id)}</b> · Debe ${money(c.importe_esperado||0)} · <span class="badge ${monthPaid(c.alumno_id,c.profesor_id,c.fecha)?'good':'warn'}">${monthPaid(c.alumno_id,c.profesor_id,c.fecha)?'Pagado':'Pendiente'}</span> · <button onclick="editAttendance('${c.id}')">Editar</button></div>`).join('')}</div>`;
+      return `<div style="padding:7px 0;border-bottom:1px solid var(--line)">
+        <div><span class="badge good">Ocupado</span> <b>Prof. ${tName(first.profesor_id)}</b> · ${g.length} alumno${g.length>1?'s':''}</div>
+        ${g.map(c=>{
+          const paid=classIsPaid(c);
+          const attendance=c.estado||'Pendiente';
+          const attendanceClass=attendance==='Presente'?'good':(attendance==='Pendiente'?'warn':'');
+          return `<div style="margin-top:7px">
+            <b>${sName(c.alumno_id)}</b>
+            · <span class="badge ${attendanceClass}">Asistencia: ${attendance}</span>
+            · <span class="badge ${paid?'good':'warn'}">${paid?'Pago: Pagado':'Pago: Pendiente'}</span>
+            ${paid?'':` · Debe ${money(c.importe_esperado||0)}`}
+            · <button onclick="editAttendance('${c.id}')">Editar</button>
+          </div>`;
+        }).join('')}
+      </div>`;
     }).join('');
     return `<div class="slot"><div class="time">${time}</div><div>${content}</div><button onclick="openClassAt('${time}')">+ Otra</button></div>`;
   }).join('');
 }
-
 function renderStudents(){
   $('#studentsBody').innerHTML=students.length?students.map(s=>`<tr><td><b>${s.nombre}</b></td><td>${s.telefono||''}</td><td>${s.activo!==false?'<span class="badge good">Activo</span>':'<span class="badge warn">Baja</span>'}</td><td>${s.fecha_baja||''}</td><td>${s.observaciones||''}</td><td><button onclick="editStudent('${s.id}')">Editar</button> ${s.activo!==false?`<button onclick="cancelStudent('${s.id}')">Dar de baja</button>`:`<button onclick="reactivateStudent('${s.id}')">Dar de alta</button>`}</td></tr>`).join(''):'<tr><td colspan="6">No hay alumnos.</td></tr>';
 }
@@ -252,15 +277,28 @@ $('#saveAttendance').onclick=async()=>{const id=$('#attendanceClassId').value,c=
 $('#deleteParticipantBtn').onclick=async()=>{const id=$('#attendanceClassId').value;if(!confirm('¿Eliminar solo este alumno de la clase?'))return;const r=await db.from('clases').delete().eq('id',id);if(r.error)return alert(r.error.message);closeM('attendanceModal');await refreshAll()};
 $('#deleteClassBtn').onclick=async()=>{const id=$('#attendanceClassId').value,c=classes.find(x=>x.id===id);if(!c)return;if(!confirm('¿Eliminar esta clase?'))return;const r=c.grupo_id?await db.from('clases').delete().eq('grupo_id',c.grupo_id):await db.from('clases').delete().eq('id',id);if(r.error)return alert(r.error.message);closeM('attendanceModal');await refreshAll()};
 
+
+function updatePayClassOptions(){
+  const wrap=$('#payClassWrap'), sel=$('#payClass'), type=$('#payType').value;
+  if(type!=='Por clase'){wrap.style.display='none';sel.innerHTML='';return}
+  wrap.style.display='block';
+  const student=$('#payStudent').value,teacher=$('#payTeacher').value,current=sel.value;
+  let rows=classes.filter(c=>(!student||c.alumno_id===student)&&(!teacher||c.profesor_id===teacher));
+  rows=rows.sort((a,b)=>(b.fecha+(b.hora||'')).localeCompare(a.fecha+(a.hora||'')));
+  sel.innerHTML='<option value="">Seleccionar clase</option>'+rows.map(c=>`<option value="${c.id}">${c.fecha} ${(c.hora||'').slice(0,5)} · ${sName(c.alumno_id)} · ${tName(c.profesor_id)} · ${classIsPaid(c)?'PAGADA':'PENDIENTE'}</option>`).join('');
+  if(current&&[...sel.options].some(o=>o.value===current))sel.value=current;
+}
+
 // PAGOS
-$('#newPaymentBtn').onclick=()=>{$('#paymentId').value='';$('#paymentModalTitle').textContent='Registrar pago';$('#payStudent').value='';$('#payTeacher').value='';$('#payDate').value=localISO();$('#payMonth').value=monthKey(localISO());$('#payAmount').value='';$('#payNotes').value='';$('#deletePaymentBtn').style.display='none';openM('paymentModal')};
-window.editPayment=id=>{const p=payments.find(x=>x.id===id);if(!p)return;$('#paymentId').value=id;$('#paymentModalTitle').textContent='Editar pago';$('#payStudent').value=p.alumno_id;$('#payTeacher').value=p.profesor_id;$('#payType').value=p.tipo_pago;$('#payMonth').value=p.mes_abonado?monthKey(p.mes_abonado):monthKey(localISO());$('#payDate').value=p.fecha_cobro;$('#payMethod').value=p.medio_pago;$('#payAmount').value=p.importe;$('#payNotes').value=p.observaciones||'';$('#deletePaymentBtn').style.display='inline-block';openM('paymentModal')};
-$('#savePayment').onclick=async()=>{const id=$('#paymentId').value,type=$('#payType').value,obj={alumno_id:$('#payStudent').value,profesor_id:$('#payTeacher').value,tipo_pago:type,mes_abonado:type==='Mensual'?monthFirst($('#payMonth').value):null,fecha_cobro:$('#payDate').value,importe:Number($('#payAmount').value||0),medio_pago:$('#payMethod').value,observaciones:$('#payNotes').value.trim()};if(!obj.alumno_id||!obj.profesor_id||!obj.fecha_cobro||obj.importe<=0)return alert('Completá alumno, profesor, fecha e importe.');const r=id?await db.from('pagos').update(obj).eq('id',id):await db.from('pagos').insert(obj);if(r.error)return alert(r.error.message);closeM('paymentModal');await loadPayments()};
+$('#newPaymentBtn').onclick=()=>{$('#paymentId').value='';$('#paymentModalTitle').textContent='Registrar pago';$('#payStudent').value='';$('#payTeacher').value='';$('#payType').value='Mensual';$('#payDate').value=localISO();$('#payMonth').value=monthKey(localISO());$('#payAmount').value='';$('#payNotes').value='';$('#deletePaymentBtn').style.display='none';updatePayClassOptions();openM('paymentModal')};
+window.editPayment=id=>{const p=payments.find(x=>x.id===id);if(!p)return;$('#paymentId').value=id;$('#paymentModalTitle').textContent='Editar pago';$('#payStudent').value=p.alumno_id;$('#payTeacher').value=p.profesor_id;$('#payType').value=p.tipo_pago;$('#payMonth').value=p.mes_abonado?monthKey(p.mes_abonado):monthKey(localISO());$('#payDate').value=p.fecha_cobro;$('#payMethod').value=p.medio_pago;$('#payAmount').value=p.importe;$('#payNotes').value=p.observaciones||'';$('#deletePaymentBtn').style.display='inline-block';updatePayClassOptions();if(p.clase_id)$('#payClass').value=p.clase_id;openM('paymentModal')};
+$('#savePayment').onclick=async()=>{const id=$('#paymentId').value,type=$('#payType').value,obj={alumno_id:$('#payStudent').value,profesor_id:$('#payTeacher').value,tipo_pago:type,mes_abonado:type==='Mensual'?monthFirst($('#payMonth').value):null,clase_id:type==='Por clase'?($('#payClass').value||null):null,fecha_cobro:$('#payDate').value,importe:Number($('#payAmount').value||0),medio_pago:$('#payMethod').value,observaciones:$('#payNotes').value.trim()};if(!obj.alumno_id||!obj.profesor_id||!obj.fecha_cobro||obj.importe<=0)return alert('Completá alumno, profesor, fecha e importe.');if(type==='Por clase'&&!obj.clase_id)return alert('Elegí la clase exacta que está abonando.');const r=id?await db.from('pagos').update(obj).eq('id',id):await db.from('pagos').insert(obj);if(r.error)return alert(r.error.message);closeM('paymentModal');await refreshAll()};
 $('#deletePaymentBtn').onclick=async()=>{const id=$('#paymentId').value;if(!confirm('¿Eliminar este pago?'))return;const r=await db.from('pagos').delete().eq('id',id);if(r.error)return alert(r.error.message);closeM('paymentModal');await loadPayments()};
 $('#reloadPaymentsBtn').onclick=loadPayments;
+$('#payType').onchange=updatePayClassOptions;$('#payStudent').onchange=updatePayClassOptions;$('#payTeacher').onchange=updatePayClassOptions;
 
 // REPORTES
-async function exportAgenda(teacherOnly){const from=$('#reportFrom').value,to=$('#reportTo').value,teacher=$('#reportTeacher').value;if(!from||!to)return alert('Elegí fechas.');if(teacherOnly&&!teacher)return alert('Elegí profesor.');let rows=classes.filter(c=>c.fecha>=from&&c.fecha<=to);if(teacherOnly)rows=rows.filter(c=>c.profesor_id===teacher);const data=rows.map(c=>({Fecha:c.fecha,Día:dayName(c.fecha),Horario:(c.hora||'').slice(0,5),Alumno:sName(c.alumno_id),Profesor:tName(c.profesor_id),'Importe esperado':Number(c.importe_esperado||0),Estado:c.estado,Pago:monthPaid(c.alumno_id,c.profesor_id,c.fecha)?'Pagado':'Pendiente'}));const ws=XLSX.utils.json_to_sheet(data),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Agenda');XLSX.writeFile(wb,'Agenda.xlsx')}
+async function exportAgenda(teacherOnly){const from=$('#reportFrom').value,to=$('#reportTo').value,teacher=$('#reportTeacher').value;if(!from||!to)return alert('Elegí fechas.');if(teacherOnly&&!teacher)return alert('Elegí profesor.');let rows=classes.filter(c=>c.fecha>=from&&c.fecha<=to);if(teacherOnly)rows=rows.filter(c=>c.profesor_id===teacher);const data=rows.map(c=>({Fecha:c.fecha,Día:dayName(c.fecha),Horario:(c.hora||'').slice(0,5),Alumno:sName(c.alumno_id),Profesor:tName(c.profesor_id),'Importe esperado':Number(c.importe_esperado||0),Estado:c.estado,Pago:classIsPaid(c)?'Pagado':'Pendiente'}));const ws=XLSX.utils.json_to_sheet(data),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Agenda');XLSX.writeFile(wb,'Agenda.xlsx')}
 $('#exportTeacherBtn').onclick=()=>exportAgenda(true);$('#exportAllBtn').onclick=()=>exportAgenda(false);
 $('#exportPaymentsBtn').onclick=()=>{const data=payments.map(p=>({Fecha:p.fecha_cobro,Alumno:sName(p.alumno_id),Profesor:tName(p.profesor_id),Tipo:p.tipo_pago,'Mes abonado':p.mes_abonado?monthKey(p.mes_abonado):'',Medio:p.medio_pago,Importe:Number(p.importe||0)}));const ws=XLSX.utils.json_to_sheet(data),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Pagos');XLSX.writeFile(wb,'Pagos.xlsx')};
 
