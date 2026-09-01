@@ -25,11 +25,16 @@ main{max-width:1320px;margin:20px auto;padding:0 16px} .view{display:none} .view
 .kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px} .kpi{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px} .kpi b{font-size:24px;display:block;margin-top:4px}
 @media(max-width:800px){.grid2,.participant,.kpis{grid-template-columns:1fr 1fr}.slot{grid-template-columns:65px 1fr}.slot>button{grid-column:2}}
 @media(max-width:560px){.grid2,.participant,.kpis{grid-template-columns:1fr}}
+
+@media(max-width:900px){
+  .oc-player-row{grid-template-columns:1fr 1fr!important}
+  .oc-player-row .danger{grid-column:1/-1}
+}
 </style>
 </head>
 <body>
 <header><div class="head">
-<div class="brand"><b>HUB POINT · Gestión de Clases</b><span>Base compartida online · v1.2-PAGOS-PRESENTES</span></div>
+<div class="brand"><b>HUB POINT · Gestión de Clases</b><span>Base compartida online · v1.3-CANCHA-ABIERTA</span></div>
 <nav>
 <button class="primary" data-view="agenda">Agenda</button>
 <button data-view="alumnos">Alumnos</button>
@@ -48,7 +53,9 @@ main{max-width:1320px;margin:20px auto;padding:0 16px} .view{display:none} .view
 <button id="prevDay">◀</button><input id="agendaDate" type="date" style="max-width:180px"><button id="nextDay">▶</button><button id="todayBtn">Hoy</button>
 <select id="agendaTeacherFilter" style="max-width:250px"><option value="">Todos los profesores</option></select>
 <button id="newSingleBtn" class="primary">+ Clase única</button><button id="newFixedBtn">+ Clase fija semanal</button>
+<button id="newOpenCourtBtn">+ Cancha abierta</button>
 </div>
+<div id="openCourtsAgenda"></div>
 <div id="agendaList"></div>
 </section>
 
@@ -116,6 +123,39 @@ main{max-width:1320px;margin:20px auto;padding:0 16px} .view{display:none} .view
 <div class="grid2"><div><label>Fecha</label><input id="attendanceDate" type="date"></div><div><label>Horario</label><select id="attendanceTime"></select></div><div><label>Alumno</label><select id="attendanceStudent"></select></div><div><label>Profesor</label><select id="attendanceTeacher"></select></div><div><label>Estado</label><select id="attendanceStatus"><option>Pendiente</option><option>Presente</option><option>Ausente</option><option>Canceló</option><option>Recupera</option></select></div><div><label>Importe que debe abonar</label><input id="attendanceAmount" type="number" min="0"></div></div>
 <div id="groupEditWrap" style="display:none;margin-top:12px"><label style="display:flex;gap:8px;align-items:center"><input id="applyWholeGroup" type="checkbox" style="width:auto"> Aplicar fecha, horario y profesor a toda la clase grupal</label></div>
 <div class="toolbar" style="margin-top:14px"><button id="saveAttendance" class="primary">Guardar cambios</button><button id="deleteParticipantBtn" class="danger" style="display:none">Eliminar este alumno</button><button id="deleteClassBtn" class="danger">Eliminar clase</button></div>
+</div></div>
+
+
+<!-- CANCHA ABIERTA · MÓDULO AISLADO -->
+<div id="openCourtModal" class="modal"><div class="modal-card">
+  <div class="modal-head"><h3 id="openCourtTitle">Cancha abierta</h3><button data-close="openCourtModal">✕</button></div>
+  <input type="hidden" id="openCourtId">
+  <div class="grid2">
+    <div><label>Fecha</label><input id="ocDate" type="date"></div>
+    <div><label>Hora inicio</label><input id="ocStart" type="time" step="900"></div>
+    <div><label>Hora fin</label><input id="ocEnd" type="time" step="900"></div>
+    <div><label>Cancha</label><select id="ocCourt"><option>Cancha 1</option><option>Cancha 2</option><option>Cancha 3</option></select></div>
+    <div><label>Tipo</label><select id="ocType"><option>Femenina</option><option>Masculina</option><option>Mixta</option></select></div>
+    <div><label>Categoría</label><select id="ocCategory"></select></div>
+    <div><label>Coordinador</label><input id="ocCoordinator" placeholder="Nombre"></div>
+    <div><label>Pago coordinador</label><input id="ocCoordinatorAmount" type="number" min="0" placeholder="0"></div>
+    <div><label>Estado pago coordinador</label><select id="ocCoordinatorPaid"><option value="false">Pendiente</option><option value="true">Pagado</option></select></div>
+    <div><label>Medio pago coordinador</label><select id="ocCoordinatorMethod"><option value="">Sin especificar</option><option>Efectivo</option><option>Transferencia</option></select></div>
+  </div>
+  <div style="margin-top:12px"><label>Observaciones</label><textarea id="ocNotes" rows="2"></textarea></div>
+
+  <div style="margin-top:16px">
+    <div class="toolbar" style="justify-content:space-between">
+      <b>Jugadores</b>
+      <button id="addOpenCourtPlayer" type="button">+ Agregar jugador</button>
+    </div>
+    <div id="openCourtPlayers"></div>
+  </div>
+
+  <div class="toolbar" style="margin-top:16px">
+    <button id="saveOpenCourt" class="primary">Guardar cancha abierta</button>
+    <button id="deleteOpenCourt" class="danger" style="display:none">Eliminar cancha abierta</button>
+  </div>
 </div></div>
 
 <!-- PAGO -->
@@ -288,6 +328,224 @@ function updatePayClassOptions(){
   sel.innerHTML='<option value="">Seleccionar clase</option>'+rows.map(c=>`<option value="${c.id}">${c.fecha} ${(c.hora||'').slice(0,5)} · ${sName(c.alumno_id)} · ${tName(c.profesor_id)} · ${classIsPaid(c)?'PAGADA':'PENDIENTE'}</option>`).join('');
   if(current&&[...sel.options].some(o=>o.value===current))sel.value=current;
 }
+
+
+// ============================================================
+// CANCHA ABIERTA · MÓDULO AISLADO
+// No altera tablas ni lógica de clases, alumnos, profesores o pagos.
+// ============================================================
+let openCourts=[];
+let openCourtPlayers=[];
+
+const OPEN_COURT_CATEGORIES={
+  Femenina:['9na','8va','7ma','6ta','5ta'],
+  Masculina:['9na','8va','7ma','6ta','5ta','4ta'],
+  Mixta:['Mixta']
+};
+
+function fillOpenCourtCategories(selected=''){
+  const type=$('#ocType').value||'Femenina';
+  const options=OPEN_COURT_CATEGORIES[type]||['Mixta'];
+  $('#ocCategory').innerHTML=options.map(x=>`<option value="${x}">${x}</option>`).join('');
+  if(selected&&options.includes(selected))$('#ocCategory').value=selected;
+}
+
+function openCourtMoney(n){return money(Number(n||0))}
+
+async function loadOpenCourts(){
+  try{
+    const d=$('#agendaDate').value;
+    const [a,b]=await Promise.all([
+      db.from('canchas_abiertas').select('*').eq('fecha',d).neq('estado','Cancelada').order('hora_inicio'),
+      db.from('cancha_abierta_jugadores').select('*')
+    ]);
+    if(a.error) throw a.error;
+    if(b.error) throw b.error;
+    openCourts=a.data||[];
+    openCourtPlayers=b.data||[];
+    renderOpenCourtsAgenda();
+  }catch(e){
+    console.error('Cancha abierta:',e);
+    const box=$('#openCourtsAgenda');
+    if(box)box.innerHTML=`<div class="status bad">Cancha abierta no pudo sincronizar: ${e.message||e}</div>`;
+  }
+}
+
+function renderOpenCourtsAgenda(){
+  const box=$('#openCourtsAgenda');
+  if(!box)return;
+  if(!openCourts.length){box.innerHTML='';return}
+  box.innerHTML=`<div class="card" style="margin-bottom:14px">
+    <div style="font-weight:900;margin-bottom:10px">Canchas abiertas del día</div>
+    ${openCourts.map(o=>{
+      const ps=openCourtPlayers.filter(p=>p.cancha_abierta_id===o.id);
+      const present=ps.filter(p=>p.presente===true).length;
+      const paid=ps.filter(p=>p.pagado===true).length;
+      const pending=ps.length-paid;
+      return `<div style="padding:10px 0;border-bottom:1px solid var(--line)">
+        <div><span class="badge good">Cancha abierta</span> <b>${(o.hora_inicio||'').slice(0,5)} · ${o.tipo} ${o.categoria||''}</b> · ${o.cancha||''}</div>
+        <div class="muted" style="margin-top:4px">${ps.length} jugador${ps.length===1?'':'es'} · ${present} presente${present===1?'':'s'} · ${paid} pagado${paid===1?'':'s'} · ${pending} pendiente${pending===1?'':'s'} · Coordinador: ${o.coordinador_nombre||'Sin asignar'}</div>
+        <div style="margin-top:7px"><button onclick="editOpenCourt('${o.id}')">Ver / editar</button></div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function openCourtPlayerRow(p={}){
+  const id=p.id||'';
+  return `<div class="oc-player-row" data-player-id="${id}" style="display:grid;grid-template-columns:1.4fr .8fr .7fr .9fr .9fr auto;gap:7px;align-items:end;margin:8px 0;padding:9px;border:1px solid var(--line);border-radius:10px">
+    <div><label>Jugador/a</label><input class="ocPlayerName" value="${(p.nombre||'').replace(/"/g,'&quot;')}" placeholder="Nombre"></div>
+    <div><label>Importe</label><input class="ocPlayerExpected" type="number" min="0" value="${Number(p.importe_esperado||0)}"></div>
+    <div><label>Presente</label><select class="ocPlayerPresent"><option value="">Pendiente</option><option value="true" ${p.presente===true?'selected':''}>Sí</option><option value="false" ${p.presente===false?'selected':''}>No</option></select></div>
+    <div><label>Pago</label><select class="ocPlayerPaid"><option value="false" ${p.pagado!==true?'selected':''}>Pendiente</option><option value="true" ${p.pagado===true?'selected':''}>Pagado</option></select></div>
+    <div><label>Medio</label><select class="ocPlayerMethod"><option value="">-</option><option ${p.medio_pago==='Efectivo'?'selected':''}>Efectivo</option><option ${p.medio_pago==='Transferencia'?'selected':''}>Transferencia</option></select></div>
+    <button type="button" class="danger ocRemovePlayer">Quitar</button>
+  </div>`;
+}
+
+function addOpenCourtPlayerRow(p={}){
+  $('#openCourtPlayers').insertAdjacentHTML('beforeend',openCourtPlayerRow(p));
+}
+
+function resetOpenCourtForm(){
+  $('#openCourtId').value='';
+  $('#openCourtTitle').textContent='Nueva cancha abierta';
+  $('#ocDate').value=$('#agendaDate').value||localISO();
+  $('#ocStart').value='15:30';
+  $('#ocEnd').value='17:00';
+  $('#ocCourt').value='Cancha 1';
+  $('#ocType').value='Femenina';
+  fillOpenCourtCategories('8va');
+  $('#ocCoordinator').value='';
+  $('#ocCoordinatorAmount').value='';
+  $('#ocCoordinatorPaid').value='false';
+  $('#ocCoordinatorMethod').value='';
+  $('#ocNotes').value='';
+  $('#openCourtPlayers').innerHTML='';
+  for(let i=0;i<4;i++)addOpenCourtPlayerRow();
+  $('#deleteOpenCourt').style.display='none';
+}
+
+window.editOpenCourt=async id=>{
+  const o=openCourts.find(x=>x.id===id);
+  if(!o)return;
+  $('#openCourtId').value=o.id;
+  $('#openCourtTitle').textContent='Editar cancha abierta';
+  $('#ocDate').value=o.fecha;
+  $('#ocStart').value=(o.hora_inicio||'').slice(0,5);
+  $('#ocEnd').value=(o.hora_fin||'').slice(0,5);
+  $('#ocCourt').value=o.cancha||'Cancha 1';
+  $('#ocType').value=o.tipo||'Femenina';
+  fillOpenCourtCategories(o.categoria||'');
+  $('#ocCoordinator').value=o.coordinador_nombre||'';
+  $('#ocCoordinatorAmount').value=Number(o.coordinador_importe||0);
+  $('#ocCoordinatorPaid').value=o.coordinador_pagado===true?'true':'false';
+  $('#ocCoordinatorMethod').value=o.coordinador_medio_pago||'';
+  $('#ocNotes').value=o.observaciones||'';
+  $('#openCourtPlayers').innerHTML='';
+  const ps=openCourtPlayers.filter(p=>p.cancha_abierta_id===id);
+  if(ps.length)ps.forEach(addOpenCourtPlayerRow); else for(let i=0;i<4;i++)addOpenCourtPlayerRow();
+  $('#deleteOpenCourt').style.display='inline-block';
+  openM('openCourtModal');
+};
+
+$('#newOpenCourtBtn').onclick=()=>{resetOpenCourtForm();openM('openCourtModal')};
+$('#ocType').onchange=()=>fillOpenCourtCategories();
+$('#addOpenCourtPlayer').onclick=()=>addOpenCourtPlayerRow();
+
+$('#openCourtPlayers').addEventListener('click',e=>{
+  const btn=e.target.closest('.ocRemovePlayer');
+  if(!btn)return;
+  const rows=[...document.querySelectorAll('.oc-player-row')];
+  if(rows.length<=1)return alert('Dejá al menos una fila de jugador.');
+  btn.closest('.oc-player-row').remove();
+});
+
+function collectOpenCourtPlayers(){
+  return [...document.querySelectorAll('.oc-player-row')].map(row=>{
+    const name=row.querySelector('.ocPlayerName').value.trim();
+    const present=row.querySelector('.ocPlayerPresent').value;
+    const paid=row.querySelector('.ocPlayerPaid').value==='true';
+    const expected=Number(row.querySelector('.ocPlayerExpected').value||0);
+    const method=row.querySelector('.ocPlayerMethod').value;
+    return {
+      id:row.dataset.playerId||null,
+      nombre:name,
+      presente:present===''?null:present==='true',
+      importe_esperado:expected,
+      pagado:paid,
+      medio_pago:paid?method:null,
+      fecha_pago:paid?localISO():null,
+      importe_pagado:paid?expected:0
+    };
+  }).filter(p=>p.nombre);
+}
+
+$('#saveOpenCourt').onclick=async()=>{
+  const id=$('#openCourtId').value;
+  const obj={
+    fecha:$('#ocDate').value,
+    hora_inicio:$('#ocStart').value,
+    hora_fin:$('#ocEnd').value||null,
+    cancha:$('#ocCourt').value,
+    tipo:$('#ocType').value,
+    categoria:$('#ocCategory').value,
+    coordinador_nombre:$('#ocCoordinator').value.trim()||null,
+    coordinador_importe:Number($('#ocCoordinatorAmount').value||0),
+    coordinador_pagado:$('#ocCoordinatorPaid').value==='true',
+    coordinador_medio_pago:$('#ocCoordinatorPaid').value==='true'?($('#ocCoordinatorMethod').value||null):null,
+    coordinador_fecha_pago:$('#ocCoordinatorPaid').value==='true'?localISO():null,
+    observaciones:$('#ocNotes').value.trim()||null,
+    estado:'Activa'
+  };
+  if(!obj.fecha||!obj.hora_inicio||!obj.tipo||!obj.categoria)return alert('Completá fecha, horario, tipo y categoría.');
+  const ps=collectOpenCourtPlayers();
+
+  let eventId=id;
+  if(id){
+    const r=await db.from('canchas_abiertas').update(obj).eq('id',id);
+    if(r.error)return alert(r.error.message);
+    const del=await db.from('cancha_abierta_jugadores').delete().eq('cancha_abierta_id',id);
+    if(del.error)return alert(del.error.message);
+  }else{
+    const r=await db.from('canchas_abiertas').insert(obj).select().single();
+    if(r.error)return alert(r.error.message);
+    eventId=r.data.id;
+  }
+  if(ps.length){
+    const rows=ps.map(p=>({
+      cancha_abierta_id:eventId,
+      nombre:p.nombre,
+      presente:p.presente,
+      importe_esperado:p.importe_esperado,
+      pagado:p.pagado,
+      medio_pago:p.medio_pago,
+      fecha_pago:p.fecha_pago,
+      importe_pagado:p.importe_pagado
+    }));
+    const r=await db.from('cancha_abierta_jugadores').insert(rows);
+    if(r.error)return alert(r.error.message);
+  }
+  closeM('openCourtModal');
+  $('#agendaDate').value=obj.fecha;
+  await loadOpenCourts();
+};
+
+$('#deleteOpenCourt').onclick=async()=>{
+  const id=$('#openCourtId').value;
+  if(!id||!confirm('¿Eliminar esta cancha abierta y todos sus jugadores?'))return;
+  const r=await db.from('canchas_abiertas').delete().eq('id',id);
+  if(r.error)return alert(r.error.message);
+  closeM('openCourtModal');
+  await loadOpenCourts();
+};
+
+// Extensión segura: conserva refreshAll original y solo agrega carga de cancha abierta.
+const refreshAllBeforeOpenCourts=refreshAll;
+refreshAll=async function(){
+  await refreshAllBeforeOpenCourts();
+  await loadOpenCourts();
+};
 
 // PAGOS
 $('#newPaymentBtn').onclick=()=>{$('#paymentId').value='';$('#paymentModalTitle').textContent='Registrar pago';$('#payStudent').value='';$('#payTeacher').value='';$('#payType').value='Mensual';$('#payDate').value=localISO();$('#payMonth').value=monthKey(localISO());$('#payAmount').value='';$('#payNotes').value='';$('#deletePaymentBtn').style.display='none';updatePayClassOptions();openM('paymentModal')};
