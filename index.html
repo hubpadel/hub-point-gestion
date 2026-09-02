@@ -34,7 +34,7 @@ main{max-width:1320px;margin:20px auto;padding:0 16px} .view{display:none} .view
 </head>
 <body>
 <header><div class="head">
-<div class="brand"><b>HUB POINT · Gestión de Clases</b><span>Base compartida online · v1.3-CANCHA-ABIERTA</span></div>
+<div class="brand"><b>HUB POINT · Gestión de Clases</b><span>Base compartida online · v1.4-CANCHA-ABIERTA-FINANZAS</span></div>
 <nav>
 <button class="primary" data-view="agenda">Agenda</button>
 <button data-view="alumnos">Alumnos</button>
@@ -84,6 +84,19 @@ main{max-width:1320px;margin:20px auto;padding:0 16px} .view{display:none} .view
 <div class="kpi"><span>A liquidar profesores</span><b id="fTeacher">$0</b></div>
 </div>
 <div class="table-wrap"><table><thead><tr><th>Profesor</th><th>Ingresos</th><th>%</th><th>A liquidar</th></tr></thead><tbody id="settlementBody"></tbody></table></div>
+
+<div id="openCourtFinance" style="margin-top:18px">
+  <h3 style="margin:0 0 10px">Canchas abiertas</h3>
+  <div class="kpis">
+    <div class="kpi"><span>Ingresos jugadores</span><b id="ocfIncome">$0</b></div>
+    <div class="kpi"><span>Salidas coordinadores</span><b id="ocfCoordinator">$0</b></div>
+    <div class="kpi"><span>Pendiente jugadores</span><b id="ocfPending">$0</b></div>
+    <div class="kpi"><span>Resultado neto</span><b id="ocfNet">$0</b></div>
+  </div>
+  <div class="table-wrap">
+    <table><thead><tr><th>Fecha</th><th>Cancha abierta</th><th>Jugadores</th><th>Cobrado</th><th>Pendiente</th><th>Coordinador</th><th>Salida coordinador</th><th>Resultado</th></tr></thead><tbody id="openCourtFinanceBody"></tbody></table>
+  </div>
+</div>
 </section>
 
 <section id="reportes" class="view">
@@ -137,6 +150,8 @@ main{max-width:1320px;margin:20px auto;padding:0 16px} .view{display:none} .view
     <div><label>Cancha</label><select id="ocCourt"><option>Cancha 1</option><option>Cancha 2</option><option>Cancha 3</option></select></div>
     <div><label>Tipo</label><select id="ocType"><option>Femenina</option><option>Masculina</option><option>Mixta</option></select></div>
     <div><label>Categoría</label><select id="ocCategory"></select></div>
+    <div><label>Cupo máximo</label><input id="ocCapacity" type="number" min="1" value="8"></div>
+    <div><label>Valor por jugador</label><input id="ocPlayerValue" type="number" min="0" value="0"></div>
     <div><label>Coordinador</label><input id="ocCoordinator" placeholder="Nombre"></div>
     <div><label>Pago coordinador</label><input id="ocCoordinatorAmount" type="number" min="0" placeholder="0"></div>
     <div><label>Estado pago coordinador</label><select id="ocCoordinatorPaid"><option value="false">Pendiente</option><option value="true">Pagado</option></select></div>
@@ -364,6 +379,7 @@ async function loadOpenCourts(){
     openCourts=a.data||[];
     openCourtPlayers=b.data||[];
     renderOpenCourtsAgenda();
+    if($('#openCourtFinanceBody'))renderOpenCourtFinance();
   }catch(e){
     console.error('Cancha abierta:',e);
     const box=$('#openCourtsAgenda');
@@ -384,7 +400,7 @@ function renderOpenCourtsAgenda(){
       const pending=ps.length-paid;
       return `<div style="padding:10px 0;border-bottom:1px solid var(--line)">
         <div><span class="badge good">Cancha abierta</span> <b>${(o.hora_inicio||'').slice(0,5)} · ${o.tipo} ${o.categoria||''}</b> · ${o.cancha||''}</div>
-        <div class="muted" style="margin-top:4px">${ps.length} jugador${ps.length===1?'':'es'} · ${present} presente${present===1?'':'s'} · ${paid} pagado${paid===1?'':'s'} · ${pending} pendiente${pending===1?'':'s'} · Coordinador: ${o.coordinador_nombre||'Sin asignar'}</div>
+        <div class="muted" style="margin-top:4px">${ps.length}/${Number(o.cupo_maximo||ps.length||0)} jugador${ps.length===1?'':'es'} · ${present} presente${present===1?'':'s'} · ${paid} pagado${paid===1?'':'s'} · ${pending} pendiente${pending===1?'':'s'} · ${openCourtMoney(o.valor_por_jugador||0)} c/u · Coordinador: ${o.coordinador_nombre||'Sin asignar'}</div>
         <div style="margin-top:7px"><button onclick="editOpenCourt('${o.id}')">Ver / editar</button></div>
       </div>`;
     }).join('')}
@@ -404,6 +420,7 @@ function openCourtPlayerRow(p={}){
 }
 
 function addOpenCourtPlayerRow(p={}){
+  if((p.importe_esperado===undefined||p.importe_esperado===null)&&$('#ocPlayerValue')) p={...p,importe_esperado:Number($('#ocPlayerValue').value||0)};
   $('#openCourtPlayers').insertAdjacentHTML('beforeend',openCourtPlayerRow(p));
 }
 
@@ -416,6 +433,8 @@ function resetOpenCourtForm(){
   $('#ocCourt').value='Cancha 1';
   $('#ocType').value='Femenina';
   fillOpenCourtCategories('8va');
+  $('#ocCapacity').value=8;
+  $('#ocPlayerValue').value=0;
   $('#ocCoordinator').value='';
   $('#ocCoordinatorAmount').value='';
   $('#ocCoordinatorPaid').value='false';
@@ -437,6 +456,8 @@ window.editOpenCourt=async id=>{
   $('#ocCourt').value=o.cancha||'Cancha 1';
   $('#ocType').value=o.tipo||'Femenina';
   fillOpenCourtCategories(o.categoria||'');
+  $('#ocCapacity').value=Number(o.cupo_maximo||8);
+  $('#ocPlayerValue').value=Number(o.valor_por_jugador||0);
   $('#ocCoordinator').value=o.coordinador_nombre||'';
   $('#ocCoordinatorAmount').value=Number(o.coordinador_importe||0);
   $('#ocCoordinatorPaid').value=o.coordinador_pagado===true?'true':'false';
@@ -490,6 +511,8 @@ $('#saveOpenCourt').onclick=async()=>{
     cancha:$('#ocCourt').value,
     tipo:$('#ocType').value,
     categoria:$('#ocCategory').value,
+    cupo_maximo:Number($('#ocCapacity').value||0),
+    valor_por_jugador:Number($('#ocPlayerValue').value||0),
     coordinador_nombre:$('#ocCoordinator').value.trim()||null,
     coordinador_importe:Number($('#ocCoordinatorAmount').value||0),
     coordinador_pagado:$('#ocCoordinatorPaid').value==='true',
@@ -500,6 +523,7 @@ $('#saveOpenCourt').onclick=async()=>{
   };
   if(!obj.fecha||!obj.hora_inicio||!obj.tipo||!obj.categoria)return alert('Completá fecha, horario, tipo y categoría.');
   const ps=collectOpenCourtPlayers();
+  if(obj.cupo_maximo>0&&ps.length>obj.cupo_maximo)return alert(`El cupo máximo es ${obj.cupo_maximo} jugadores.`);
 
   let eventId=id;
   if(id){
@@ -540,6 +564,43 @@ $('#deleteOpenCourt').onclick=async()=>{
   await loadOpenCourts();
 };
 
+
+async function renderOpenCourtFinance(){
+  const m=$('#financeMonth').value||monthKey(localISO());
+  const start=m+'-01';
+  const next=plusMonths(start,1);
+  try{
+    const ev=await db.from('canchas_abiertas').select('*').gte('fecha',start).lt('fecha',next).neq('estado','Cancelada').order('fecha').order('hora_inicio');
+    if(ev.error)throw ev.error;
+    const events=ev.data||[];
+    let players=[];
+    if(events.length){
+      const ids=events.map(x=>x.id);
+      const pr=await db.from('cancha_abierta_jugadores').select('*').in('cancha_abierta_id',ids);
+      if(pr.error)throw pr.error;
+      players=pr.data||[];
+    }
+    let totalIncome=0,totalCoordinator=0,totalPending=0;
+    const rows=events.map(o=>{
+      const ps=players.filter(p=>p.cancha_abierta_id===o.id);
+      const income=ps.filter(p=>p.pagado===true).reduce((s,p)=>s+Number(p.importe_pagado||p.importe_esperado||0),0);
+      const pending=ps.filter(p=>p.pagado!==true).reduce((s,p)=>s+Number(p.importe_esperado||0),0);
+      const coordOut=o.coordinador_pagado===true?Number(o.coordinador_importe||0):0;
+      const net=income-coordOut;
+      totalIncome+=income;totalCoordinator+=coordOut;totalPending+=pending;
+      return{o,ps,income,pending,coordOut,net};
+    });
+    $('#ocfIncome').textContent=money(totalIncome);
+    $('#ocfCoordinator').textContent=money(totalCoordinator);
+    $('#ocfPending').textContent=money(totalPending);
+    $('#ocfNet').textContent=money(totalIncome-totalCoordinator);
+    $('#openCourtFinanceBody').innerHTML=rows.length?rows.map(x=>`<tr><td>${x.o.fecha||''}</td><td><b>${x.o.tipo||''} ${x.o.categoria||''}</b><div class="muted">${(x.o.hora_inicio||'').slice(0,5)} · ${x.o.cancha||''}</div></td><td>${x.ps.length}/${Number(x.o.cupo_maximo||x.ps.length||0)}</td><td><b>${money(x.income)}</b></td><td>${money(x.pending)}</td><td>${x.o.coordinador_nombre||'—'}</td><td>${x.o.coordinador_pagado===true?`<b>${money(x.coordOut)}</b><div class="muted">${x.o.coordinador_medio_pago||''}</div>`:`<span class="badge warn">Pendiente ${money(x.o.coordinador_importe||0)}</span>`}</td><td><b>${money(x.net)}</b></td></tr>`).join(''):'<tr><td colspan="8">Sin canchas abiertas en este mes.</td></tr>';
+  }catch(e){
+    console.error('Finanzas cancha abierta:',e);
+    $('#openCourtFinanceBody').innerHTML=`<tr><td colspan="8">Error al cargar canchas abiertas: ${e.message||e}</td></tr>`;
+  }
+}
+
 // Extensión segura: conserva refreshAll original y solo agrega carga de cancha abierta.
 const refreshAllBeforeOpenCourts=refreshAll;
 refreshAll=async function(){
@@ -567,5 +628,7 @@ $('#agendaDate').value=localISO();$('#financeMonth').value=monthKey(localISO());
 refreshAll();
 setInterval(()=>{if(!document.querySelector('.modal.open'))refreshAll()},5000);
 window.addEventListener('focus',()=>{if(!document.querySelector('.modal.open'))refreshAll()});
+
+if($('#financeMonth'))$('#financeMonth').addEventListener('change',()=>renderOpenCourtFinance());
 </script>
 </body></html>
