@@ -34,7 +34,7 @@ main{max-width:1320px;margin:20px auto;padding:0 16px} .view{display:none} .view
 </head>
 <body>
 <header><div class="head">
-<div class="brand"><b>HUB POINT · Gestión de Clases</b><span>Base compartida online · v1.5-CANCHA-ABIERTA-GESTION</span></div>
+<div class="brand"><b>HUB POINT · Gestión de Clases</b><span>Base compartida online · v1.6-CANCHA-ABIERTA-12-SUPLENTES</span></div>
 <nav>
 <button class="primary" data-view="agenda">Agenda</button>
 <button data-view="alumnos">Alumnos</button>
@@ -156,7 +156,7 @@ main{max-width:1320px;margin:20px auto;padding:0 16px} .view{display:none} .view
     <div><label>Cancha</label><select id="ocCourt"><option>Cancha 1</option><option>Cancha 2</option><option>Cancha 3</option></select></div>
     <div><label>Tipo</label><select id="ocType"><option>Femenina</option><option>Masculina</option><option>Mixta</option></select></div>
     <div><label>Categoría</label><select id="ocCategory"></select></div>
-    <div><label>Cupo máximo</label><input id="ocCapacity" type="number" min="1" value="8"></div>
+    <div><label>Cupos titulares</label><input id="ocCapacity" type="number" value="12" readonly></div>
     <div><label>Valor por jugador</label><input id="ocPlayerValue" type="number" min="0" value="0"></div>
     <div><label>Costo de cancha</label><input id="ocCourtCost" type="number" min="0" value="0"></div>
     <div><label>Coordinador</label><input id="ocCoordinator" placeholder="Nombre"></div>
@@ -168,7 +168,7 @@ main{max-width:1320px;margin:20px auto;padding:0 16px} .view{display:none} .view
 
   <div style="margin-top:16px">
     <div class="toolbar" style="justify-content:space-between">
-      <b>Jugadores</b>
+      <div><b>Jugadores</b><div id="openCourtRosterSummary" class="muted" style="margin-top:3px">Titulares 0/12 · Suplentes 0</div></div>
       <button id="addOpenCourtPlayer" type="button">+ Agregar jugador</button>
     </div>
     <div id="openCourtPlayers"></div>
@@ -379,7 +379,7 @@ async function loadOpenCourts(){
     const d=$('#agendaDate').value;
     const [a,b]=await Promise.all([
       db.from('canchas_abiertas').select('*').eq('fecha',d).neq('estado','Cancelada').order('hora_inicio'),
-      db.from('cancha_abierta_jugadores').select('*')
+      db.from('cancha_abierta_jugadores').select('*').order('created_at',{ascending:true})
     ]);
     if(a.error) throw a.error;
     if(b.error) throw b.error;
@@ -407,7 +407,7 @@ function renderOpenCourtsAgenda(){
       const pending=ps.length-paid;
       return `<div style="padding:10px 0;border-bottom:1px solid var(--line)">
         <div><span class="badge good">Cancha abierta</span> <b>${(o.hora_inicio||'').slice(0,5)} · ${o.tipo} ${o.categoria||''}</b> · ${o.cancha||''}</div>
-        <div class="muted" style="margin-top:4px">${ps.length}/${Number(o.cupo_maximo||ps.length||0)} jugador${ps.length===1?'':'es'} · ${present} presente${present===1?'':'s'} · ${paid} pagado${paid===1?'':'s'} · ${pending} pendiente${pending===1?'':'s'} · ${openCourtMoney(o.valor_por_jugador||0)} c/u · Coordinador: ${o.coordinador_nombre||'Sin asignar'}</div>
+        <div class="muted" style="margin-top:4px">${Math.min(ps.length,12)}/12 titulares · ${Math.max(ps.length-12,0)} suplente${Math.max(ps.length-12,0)===1?'':'s'} · ${present} presente${present===1?'':'s'} · ${paid} pagado${paid===1?'':'s'} · ${pending} pendiente${pending===1?'':'s'} · ${openCourtMoney(o.valor_por_jugador||0)} c/u · Coordinador: ${o.coordinador_nombre||'Sin asignar'}</div>
         <div style="margin-top:7px"><button onclick="editOpenCourt('${o.id}')">Ver / editar</button></div>
       </div>`;
     }).join('')}
@@ -416,19 +416,37 @@ function renderOpenCourtsAgenda(){
 
 function openCourtPlayerRow(p={}){
   const id=p.id||'';
-  return `<div class="oc-player-row" data-player-id="${id}" style="display:grid;grid-template-columns:1.4fr .8fr .7fr .9fr .9fr auto;gap:7px;align-items:end;margin:8px 0;padding:9px;border:1px solid var(--line);border-radius:10px">
+  return `<div class="oc-player-row" data-player-id="${id}" style="display:grid;grid-template-columns:.55fr 1.35fr .8fr .7fr .9fr .9fr auto;gap:7px;align-items:end;margin:8px 0;padding:9px;border:1px solid var(--line);border-radius:10px">
+    <div class="ocPlayerSlotWrap"><label>Posición</label><div class="ocPlayerSlot" style="font-weight:900;padding:9px 0">—</div><div class="ocPlayerRole muted" style="font-size:11px"></div></div>
     <div><label>Jugador/a</label><input class="ocPlayerName" value="${(p.nombre||'').replace(/"/g,'&quot;')}" placeholder="Nombre"></div>
     <div><label>Importe</label><input class="ocPlayerExpected" type="number" min="0" value="${Number(p.importe_esperado||0)}"></div>
     <div><label>Presente</label><select class="ocPlayerPresent"><option value="">Pendiente</option><option value="true" ${p.presente===true?'selected':''}>Sí</option><option value="false" ${p.presente===false?'selected':''}>No</option></select></div>
     <div><label>Pago</label><select class="ocPlayerPaid"><option value="false" ${p.pagado!==true?'selected':''}>Pendiente</option><option value="true" ${p.pagado===true?'selected':''}>Pagado</option></select></div>
     <div><label>Medio</label><select class="ocPlayerMethod"><option value="">-</option><option ${p.medio_pago==='Efectivo'?'selected':''}>Efectivo</option><option ${p.medio_pago==='Transferencia'?'selected':''}>Transferencia</option></select></div>
-    <button type="button" class="danger ocRemovePlayer">Quitar</button>
+    <div style="display:flex;gap:5px;flex-wrap:wrap">
+      <button type="button" class="ocPromotePlayer" style="display:none">Pasar a titular</button>
+      <button type="button" class="danger ocRemovePlayer">Quitar</button>
+    </div>
   </div>`;
+}
+
+function refreshOpenCourtPlayerPositions(){
+  const rows=[...document.querySelectorAll('.oc-player-row')];
+  rows.forEach((row,i)=>{
+    const titular=i<12;
+    row.querySelector('.ocPlayerSlot').textContent=titular?String(i+1):`S${i-11}`;
+    row.querySelector('.ocPlayerRole').textContent=titular?'Titular':'Suplente';
+    row.querySelector('.ocPromotePlayer').style.display=titular?'none':'inline-block';
+  });
+  const titulares=Math.min(rows.length,12);
+  const suplentes=Math.max(rows.length-12,0);
+  if($('#openCourtRosterSummary')) $('#openCourtRosterSummary').textContent=`Titulares ${titulares}/12 · Suplentes ${suplentes}`;
 }
 
 function addOpenCourtPlayerRow(p={}){
   if((p.importe_esperado===undefined||p.importe_esperado===null)&&$('#ocPlayerValue')) p={...p,importe_esperado:Number($('#ocPlayerValue').value||0)};
   $('#openCourtPlayers').insertAdjacentHTML('beforeend',openCourtPlayerRow(p));
+  refreshOpenCourtPlayerPositions();
 }
 
 function resetOpenCourtForm(){
@@ -440,7 +458,7 @@ function resetOpenCourtForm(){
   $('#ocCourt').value='Cancha 1';
   $('#ocType').value='Femenina';
   fillOpenCourtCategories('8va');
-  $('#ocCapacity').value=8;
+  $('#ocCapacity').value=12;
   $('#ocPlayerValue').value=0;
   $('#ocCourtCost').value=0;
   $('#ocCoordinator').value='';
@@ -464,7 +482,7 @@ window.editOpenCourt=async id=>{
   $('#ocCourt').value=o.cancha||'Cancha 1';
   $('#ocType').value=o.tipo||'Femenina';
   fillOpenCourtCategories(o.categoria||'');
-  $('#ocCapacity').value=Number(o.cupo_maximo||8);
+  $('#ocCapacity').value=12;
   $('#ocPlayerValue').value=Number(o.valor_por_jugador||0);
   $('#ocCourtCost').value=Number(o.costo_cancha||0);
   $('#ocCoordinator').value=o.coordinador_nombre||'';
@@ -475,6 +493,7 @@ window.editOpenCourt=async id=>{
   $('#openCourtPlayers').innerHTML='';
   const ps=openCourtPlayers.filter(p=>p.cancha_abierta_id===id);
   if(ps.length)ps.forEach(addOpenCourtPlayerRow); else for(let i=0;i<4;i++)addOpenCourtPlayerRow();
+  refreshOpenCourtPlayerPositions();
   $('#deleteOpenCourt').style.display='inline-block';
   openM('openCourtModal');
 };
@@ -484,11 +503,25 @@ $('#ocType').onchange=()=>fillOpenCourtCategories();
 $('#addOpenCourtPlayer').onclick=()=>addOpenCourtPlayerRow();
 
 $('#openCourtPlayers').addEventListener('click',e=>{
-  const btn=e.target.closest('.ocRemovePlayer');
-  if(!btn)return;
-  const rows=[...document.querySelectorAll('.oc-player-row')];
-  if(rows.length<=1)return alert('Dejá al menos una fila de jugador.');
-  btn.closest('.oc-player-row').remove();
+  const removeBtn=e.target.closest('.ocRemovePlayer');
+  if(removeBtn){
+    const rows=[...document.querySelectorAll('.oc-player-row')];
+    if(rows.length<=1)return alert('Dejá al menos una fila de jugador.');
+    removeBtn.closest('.oc-player-row').remove();
+    refreshOpenCourtPlayerPositions();
+    return;
+  }
+
+  const promoteBtn=e.target.closest('.ocPromotePlayer');
+  if(promoteBtn){
+    const row=promoteBtn.closest('.oc-player-row');
+    const rows=[...document.querySelectorAll('.oc-player-row')];
+    const target=rows[11];
+    if(target && row!==target){
+      $('#openCourtPlayers').insertBefore(row,target);
+      refreshOpenCourtPlayerPositions();
+    }
+  }
 });
 
 function collectOpenCourtPlayers(){
@@ -520,7 +553,7 @@ $('#saveOpenCourt').onclick=async()=>{
     cancha:$('#ocCourt').value,
     tipo:$('#ocType').value,
     categoria:$('#ocCategory').value,
-    cupo_maximo:Number($('#ocCapacity').value||0),
+    cupo_maximo:12,
     valor_por_jugador:Number($('#ocPlayerValue').value||0),
     costo_cancha:Number($('#ocCourtCost').value||0),
     coordinador_nombre:$('#ocCoordinator').value.trim()||null,
@@ -533,7 +566,6 @@ $('#saveOpenCourt').onclick=async()=>{
   };
   if(!obj.fecha||!obj.hora_inicio||!obj.tipo||!obj.categoria)return alert('Completá fecha, horario, tipo y categoría.');
   const ps=collectOpenCourtPlayers();
-  if(obj.cupo_maximo>0&&ps.length>obj.cupo_maximo)return alert(`El cupo máximo es ${obj.cupo_maximo} jugadores.`);
 
   let eventId=id;
   if(id){
