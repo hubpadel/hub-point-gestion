@@ -1600,13 +1600,20 @@ html&gt;body{padding:0}&lt;/style&gt;
     #hub-torneo-preview .hp-court-3{box-shadow:inset 0 3px 0 light-dark(#15803d,#22a85a)}
     #hub-torneo-preview .hp-legend{display:flex;gap:14px;flex-wrap:wrap;color:var(--hp-muted);font-size:12px;margin-bottom:10px}
     #hub-torneo-preview .hp-dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:5px}
-    @media(max-width:760px){#hub-torneo-preview .hp-kpis{grid-template-columns:repeat(2,1fr)}#hub-torneo-preview .hp-groups{grid-template-columns:1fr}#hub-torneo-preview .hp-event{grid-template-columns:1fr}#hub-torneo-preview .hp-round{grid-template-columns:1fr}#hub-torneo-preview .hp-round-time{padding:4px 0;flex-direction:row;gap:7px;justify-content:flex-start}}
+    #hub-torneo-preview .hp-standings{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+    #hub-torneo-preview .hp-standing-card{background:var(--hp-panel);border:1px solid var(--hp-line);border-radius:12px;overflow:hidden}
+    #hub-torneo-preview .hp-standing-card h4{margin:0;padding:10px 11px;background:light-dark(#f8fafc,#202a38);font-size:13px}
+    #hub-torneo-preview .hp-standing-card table{min-width:0}
+    #hub-torneo-preview .hp-standing-card th,#hub-torneo-preview .hp-standing-card td{padding:7px 8px;font-size:12px}
+    #hub-torneo-preview .hp-qualified{color:var(--hp-good);font-weight:700}
+    #hub-torneo-preview .hp-champion{margin-top:12px;background:var(--hp-soft);border-radius:12px;padding:14px;text-align:center;font-weight:700}
+    @media(max-width:760px){#hub-torneo-preview .hp-kpis{grid-template-columns:repeat(2,1fr)}#hub-torneo-preview .hp-groups,#hub-torneo-preview .hp-standings{grid-template-columns:1fr}#hub-torneo-preview .hp-event{grid-template-columns:1fr}#hub-torneo-preview .hp-round{grid-template-columns:1fr}#hub-torneo-preview .hp-round-time{padding:4px 0;flex-direction:row;gap:7px;justify-content:flex-start}}
   &lt;/style&gt;
 
   &lt;div class=&quot;hp-header&quot;&gt;
     &lt;div&gt;&lt;div class=&quot;hp-brand&quot;&gt;HUB POINT · Gestión&lt;/div&gt;&lt;div class=&quot;hp-sub&quot;&gt;Administración general del club&lt;/div&gt;&lt;/div&gt;
     &lt;div class=&quot;hp-nav&quot; aria-label=&quot;Secciones de Gestión&quot;&gt;
-      &lt;button type=&quot;button&quot;&gt;Agenda&lt;/button&gt;&lt;button type=&quot;button&quot;&gt;Alumnos&lt;/button&gt;&lt;button type=&quot;button&quot;&gt;Profesores&lt;/button&gt;&lt;button type=&quot;button&quot;&gt;Pagos&lt;/button&gt;&lt;button type=&quot;button&quot;&gt;Finanzas&lt;/button&gt;&lt;button type=&quot;button&quot; class=&quot;active&quot;&gt;Eventos / Torneos&lt;/button&gt;
+      &lt;button type=&quot;button&quot; data-return-view=&quot;agenda&quot;&gt;Agenda&lt;/button&gt;&lt;button type=&quot;button&quot; data-return-view=&quot;alumnos&quot;&gt;Alumnos&lt;/button&gt;&lt;button type=&quot;button&quot; data-return-view=&quot;profesores&quot;&gt;Profesores&lt;/button&gt;&lt;button type=&quot;button&quot; data-return-view=&quot;pagos&quot;&gt;Pagos&lt;/button&gt;&lt;button type=&quot;button&quot; data-return-view=&quot;finanzas&quot;&gt;Finanzas&lt;/button&gt;&lt;button type=&quot;button&quot; class=&quot;active&quot;&gt;Eventos / Torneos&lt;/button&gt;
     &lt;/div&gt;
   &lt;/div&gt;
 
@@ -1621,7 +1628,7 @@ html&gt;body{padding:0}&lt;/style&gt;
     &lt;/section&gt;
 
     &lt;section id=&quot;hp-event-detail&quot;&gt;
-      &lt;button type=&quot;button&quot; class=&quot;hp-button hp-back&quot; id=&quot;hp-back&quot;&gt;← Volver a Eventos / Torneos&lt;/button&gt;
+      &lt;button type=&quot;button&quot; class=&quot;hp-button hp-back&quot; id=&quot;hp-back&quot;&gt;← Volver a Gestión&lt;/button&gt;
       &lt;div class=&quot;hp-page-title&quot;&gt;&lt;div&gt;&lt;h2&gt;Torneo Corporativo Aperol&lt;/h2&gt;&lt;div class=&quot;hp-sub&quot;&gt;Ustedes solamente cargan los resultados&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;hp-save&quot; id=&quot;hp-save-state&quot; aria-live=&quot;polite&quot;&gt;&lt;/div&gt;&lt;/div&gt;
       &lt;div class=&quot;hp-kpis&quot;&gt;&lt;div class=&quot;hp-kpi&quot;&gt;&lt;span&gt;Parejas&lt;/span&gt;&lt;b&gt;11&lt;/b&gt;&lt;/div&gt;&lt;div class=&quot;hp-kpi&quot;&gt;&lt;span&gt;Canchas&lt;/span&gt;&lt;b&gt;3&lt;/b&gt;&lt;/div&gt;&lt;div class=&quot;hp-kpi&quot;&gt;&lt;span&gt;Partidos de grupos&lt;/span&gt;&lt;b&gt;15&lt;/b&gt;&lt;/div&gt;&lt;div class=&quot;hp-kpi&quot;&gt;&lt;span&gt;Clasifican&lt;/span&gt;&lt;b&gt;4&lt;/b&gt;&lt;/div&gt;&lt;/div&gt;
       &lt;div class=&quot;hp-note&quot;&gt;Ingresá los games de cada pareja. La tabla de posiciones y los cruces se calcularán automáticamente.&lt;/div&gt;
@@ -1663,10 +1670,12 @@ html&gt;body{padding:0}&lt;/style&gt;
         &lt;/div&gt;
       &lt;/div&gt;
 
-      &lt;div class=&quot;hp-section&quot;&gt;&lt;div class=&quot;hp-section-head&quot;&gt;&lt;h3&gt;Definición&lt;/h3&gt;&lt;/div&gt;&lt;div class=&quot;hp-table-wrap&quot;&gt;&lt;table&gt;
+      &lt;div class=&quot;hp-section&quot;&gt;&lt;div class=&quot;hp-section-head&quot;&gt;&lt;h3&gt;Posiciones automáticas&lt;/h3&gt;&lt;span class=&quot;hp-sub&quot;&gt;PG: partidos ganados · Dif: diferencia de games&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;hp-standings&quot; id=&quot;hp-standings&quot;&gt;&lt;/div&gt;&lt;/div&gt;
+
+      &lt;div class=&quot;hp-section&quot;&gt;&lt;div class=&quot;hp-section-head&quot;&gt;&lt;h3&gt;Definición automática&lt;/h3&gt;&lt;/div&gt;&lt;div class=&quot;hp-table-wrap&quot;&gt;&lt;table&gt;
         &lt;thead&gt;&lt;tr&gt;&lt;th&gt;Instancia&lt;/th&gt;&lt;th&gt;Horario&lt;/th&gt;&lt;th&gt;Cancha&lt;/th&gt;&lt;th&gt;Partido&lt;/th&gt;&lt;th&gt;Resultado&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;
-        &lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;hp-phase&quot;&gt;Semifinal 1&lt;/td&gt;&lt;td&gt;1:40–2:00&lt;/td&gt;&lt;td&gt;Cancha 1&lt;/td&gt;&lt;td&gt;Mejor ganador vs. mejor segundo&lt;/td&gt;&lt;td&gt;&lt;div class=&quot;hp-score&quot;&gt;&lt;input type=&quot;number&quot; min=&quot;0&quot;&gt; – &lt;input type=&quot;number&quot; min=&quot;0&quot;&gt;&lt;/div&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td class=&quot;hp-phase&quot;&gt;Semifinal 2&lt;/td&gt;&lt;td&gt;1:40–2:00&lt;/td&gt;&lt;td&gt;Cancha 2&lt;/td&gt;&lt;td&gt;Los otros ganadores de grupo&lt;/td&gt;&lt;td&gt;&lt;div class=&quot;hp-score&quot;&gt;&lt;input type=&quot;number&quot; min=&quot;0&quot;&gt; – &lt;input type=&quot;number&quot; min=&quot;0&quot;&gt;&lt;/div&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td class=&quot;hp-phase&quot;&gt;Final&lt;/td&gt;&lt;td&gt;2:05–2:30&lt;/td&gt;&lt;td&gt;Cancha 1&lt;/td&gt;&lt;td&gt;Ganador semifinal 1 vs. ganador semifinal 2&lt;/td&gt;&lt;td&gt;&lt;div class=&quot;hp-score&quot;&gt;&lt;input type=&quot;number&quot; min=&quot;0&quot;&gt; – &lt;input type=&quot;number&quot; min=&quot;0&quot;&gt;&lt;/div&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;
-      &lt;/table&gt;&lt;/div&gt;&lt;/div&gt;
+        &lt;tbody&gt;&lt;tr id=&quot;hp-sf1&quot;&gt;&lt;td class=&quot;hp-phase&quot;&gt;Semifinal 1&lt;/td&gt;&lt;td&gt;1:40–2:00&lt;/td&gt;&lt;td&gt;Cancha 1&lt;/td&gt;&lt;td id=&quot;hp-sf1-teams&quot;&gt;Se completa al finalizar los grupos&lt;/td&gt;&lt;td&gt;&lt;div class=&quot;hp-score&quot;&gt;&lt;input type=&quot;number&quot; min=&quot;0&quot;&gt; – &lt;input type=&quot;number&quot; min=&quot;0&quot;&gt;&lt;/div&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr id=&quot;hp-sf2&quot;&gt;&lt;td class=&quot;hp-phase&quot;&gt;Semifinal 2&lt;/td&gt;&lt;td&gt;1:40–2:00&lt;/td&gt;&lt;td&gt;Cancha 2&lt;/td&gt;&lt;td id=&quot;hp-sf2-teams&quot;&gt;Se completa al finalizar los grupos&lt;/td&gt;&lt;td&gt;&lt;div class=&quot;hp-score&quot;&gt;&lt;input type=&quot;number&quot; min=&quot;0&quot;&gt; – &lt;input type=&quot;number&quot; min=&quot;0&quot;&gt;&lt;/div&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr id=&quot;hp-final&quot;&gt;&lt;td class=&quot;hp-phase&quot;&gt;Final&lt;/td&gt;&lt;td&gt;2:05–2:30&lt;/td&gt;&lt;td&gt;Cancha 1&lt;/td&gt;&lt;td id=&quot;hp-final-teams&quot;&gt;Se completa al finalizar las semifinales&lt;/td&gt;&lt;td&gt;&lt;div class=&quot;hp-score&quot;&gt;&lt;input type=&quot;number&quot; min=&quot;0&quot;&gt; – &lt;input type=&quot;number&quot; min=&quot;0&quot;&gt;&lt;/div&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;
+      &lt;/table&gt;&lt;/div&gt;&lt;div class=&quot;hp-champion&quot; id=&quot;hp-champion&quot; aria-live=&quot;polite&quot;&gt;Campeón: pendiente&lt;/div&gt;&lt;/div&gt;
     &lt;/section&gt;
   &lt;/main&gt;
 
@@ -1677,11 +1686,89 @@ html&gt;body{padding:0}&lt;/style&gt;
       const detail=root.querySelector(&#x27;#hp-event-detail&#x27;);
       const save=root.querySelector(&#x27;#hp-save-state&#x27;);
       root.querySelector(&#x27;#hp-open-event&#x27;).addEventListener(&#x27;click&#x27;,()=&gt;{list.classList.add(&#x27;hp-hidden&#x27;);detail.classList.remove(&#x27;hp-hidden&#x27;)});
-      root.querySelector(&#x27;#hp-back&#x27;).addEventListener(&#x27;click&#x27;,()=&gt;{detail.classList.add(&#x27;hp-hidden&#x27;);list.classList.remove(&#x27;hp-hidden&#x27;)});
+      root.querySelector(&#x27;#hp-back&#x27;).addEventListener(&#x27;click&#x27;,()=&gt;{window.location.href=&#x27;index.html&#x27;});
+      root.querySelectorAll(&#x27;[data-return-view]&#x27;).forEach(button=&gt;button.addEventListener(&#x27;click&#x27;,()=&gt;{window.location.href=`index.html?view=${button.dataset.returnView}`}));
       const resultInputs=[...root.querySelectorAll(&#x27;.hp-score input&#x27;)];
       const storageKey=&#x27;hub-point-torneo-aperol-resultados&#x27;;
       const savedResults=JSON.parse(localStorage.getItem(storageKey)||&#x27;[]&#x27;);
       resultInputs.forEach((input,index)=&gt;{if(savedResults[index]!==undefined)input.value=savedResults[index]});
+      const teams={
+        a1:{name:&#x27;Gonzalo Arroyo / Camila Salvay&#x27;,short:&#x27;Gonzalo / Camila&#x27;,group:&#x27;A&#x27;},
+        a2:{name:&#x27;Franco Bonnahón / Darío Escobar&#x27;,short:&#x27;Franco / Darío&#x27;,group:&#x27;A&#x27;},
+        a3:{name:&#x27;Sebastián Aguirre Saravia / Tiago Arambarri&#x27;,short:&#x27;Sebastián A. / Tiago&#x27;,group:&#x27;A&#x27;},
+        a4:{name:&#x27;Pedro Delfino / Agustín Ferrando&#x27;,short:&#x27;Pedro D. / Agustín&#x27;,group:&#x27;A&#x27;},
+        b1:{name:&#x27;Facundo Bengolea / Alejandra Ceballos&#x27;,short:&#x27;Facundo / Alejandra&#x27;,group:&#x27;B&#x27;},
+        b2:{name:&#x27;Pablo Meira / Ximena Calveyra&#x27;,short:&#x27;Pablo / Ximena&#x27;,group:&#x27;B&#x27;},
+        b3:{name:&#x27;Sebastián Lizana / Bruno Mariscotti&#x27;,short:&#x27;Sebastián L. / Bruno&#x27;,group:&#x27;B&#x27;},
+        b4:{name:&#x27;Raúl Belligotti / Santiago Ferrer&#x27;,short:&#x27;Raúl / Santiago&#x27;,group:&#x27;B&#x27;},
+        c1:{name:&#x27;Pedro Conte Grand / Germán Toriani&#x27;,short:&#x27;Pedro C. / Germán&#x27;,group:&#x27;C&#x27;},
+        c2:{name:&#x27;Rodrigo Berdullas / Lucas Amor&#x27;,short:&#x27;Rodrigo / Lucas&#x27;,group:&#x27;C&#x27;},
+        c3:{name:&#x27;Christian Der / Andrés Fernández Dávila&#x27;,short:&#x27;Christian / Andrés&#x27;,group:&#x27;C&#x27;}
+      };
+      const matchPlan=[
+        [&#x27;a1&#x27;,&#x27;a2&#x27;],[&#x27;a3&#x27;,&#x27;a4&#x27;],[&#x27;b1&#x27;,&#x27;b2&#x27;],
+        [&#x27;a1&#x27;,&#x27;a3&#x27;],[&#x27;a2&#x27;,&#x27;a4&#x27;],[&#x27;b3&#x27;,&#x27;b4&#x27;],
+        [&#x27;a1&#x27;,&#x27;a4&#x27;],[&#x27;a2&#x27;,&#x27;a3&#x27;],[&#x27;c1&#x27;,&#x27;c2&#x27;],
+        [&#x27;b1&#x27;,&#x27;b3&#x27;],[&#x27;b2&#x27;,&#x27;b4&#x27;],[&#x27;c1&#x27;,&#x27;c3&#x27;],
+        [&#x27;b1&#x27;,&#x27;b4&#x27;],[&#x27;b2&#x27;,&#x27;b3&#x27;],[&#x27;c2&#x27;,&#x27;c3&#x27;]
+      ];
+      const groupCards=[...root.querySelectorAll(&#x27;.hp-match&#x27;)];
+      const standingHost=root.querySelector(&#x27;#hp-standings&#x27;);
+      const semifinalTeams=[null,null];
+      const scorePair=container=&gt;[...container.querySelectorAll(&#x27;.hp-score input&#x27;)].map(x=&gt;x.value===&#x27;&#x27;?null:Number(x.value));
+      const completeScore=score=&gt;score[0]!==null&amp;&amp;score[1]!==null&amp;&amp;Number.isFinite(score[0])&amp;&amp;Number.isFinite(score[1]);
+      const groupComparator=(x,y)=&gt;y.pg-x.pg||y.dif-x.dif||y.gf-x.gf||x.name.localeCompare(y.name,&#x27;es&#x27;);
+      const normalizedComparator=(x,y)=&gt;(y.pg/y.pj)-(x.pg/x.pj)||(y.dif/y.pj)-(x.dif/x.pj)||(y.gf/y.pj)-(x.gf/x.pj)||x.name.localeCompare(y.name,&#x27;es&#x27;);
+      function calculateStandings(){
+        const stats={};
+        Object.entries(teams).forEach(([id,t])=&gt;stats[id]={id,...t,pj:0,pg:0,gf:0,gc:0,dif:0});
+        groupCards.forEach((card,index)=&gt;{
+          const score=scorePair(card);
+          if(!completeScore(score))return;
+          const [homeId,awayId]=matchPlan[index];
+          const home=stats[homeId],away=stats[awayId];
+          home.pj++;away.pj++;home.gf+=score[0];home.gc+=score[1];away.gf+=score[1];away.gc+=score[0];
+          if(score[0]&gt;score[1])home.pg++;else if(score[1]&gt;score[0])away.pg++;
+        });
+        Object.values(stats).forEach(s=&gt;s.dif=s.gf-s.gc);
+        return [&#x27;A&#x27;,&#x27;B&#x27;,&#x27;C&#x27;].reduce((groups,group)=&gt;{groups[group]=Object.values(stats).filter(s=&gt;s.group===group).sort(groupComparator);return groups},{});
+      }
+      function renderStandings(groups,allGroupsComplete){
+        standingHost.innerHTML=[&#x27;A&#x27;,&#x27;B&#x27;,&#x27;C&#x27;].map(group=&gt;`&lt;div class=&quot;hp-standing-card&quot;&gt;&lt;h4&gt;Grupo ${group}&lt;/h4&gt;&lt;table&gt;&lt;thead&gt;&lt;tr&gt;&lt;th&gt;#&lt;/th&gt;&lt;th&gt;Pareja&lt;/th&gt;&lt;th&gt;PJ&lt;/th&gt;&lt;th&gt;PG&lt;/th&gt;&lt;th&gt;Dif&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;&lt;tbody&gt;${groups[group].map((s,i)=&gt;`&lt;tr class=&quot;${allGroupsComplete&amp;&amp;i===0?&#x27;hp-qualified&#x27;:&#x27;&#x27;}&quot;&gt;&lt;td&gt;${i+1}&lt;/td&gt;&lt;td&gt;${s.short}&lt;/td&gt;&lt;td&gt;${s.pj}&lt;/td&gt;&lt;td&gt;${s.pg}&lt;/td&gt;&lt;td&gt;${s.dif&gt;0?&#x27;+&#x27;:&#x27;&#x27;}${s.dif}&lt;/td&gt;&lt;/tr&gt;`).join(&#x27;&#x27;)}&lt;/tbody&gt;&lt;/table&gt;&lt;/div&gt;`).join(&#x27;&#x27;);
+      }
+      function knockoutWinner(row,teamPair){
+        if(!teamPair[0]||!teamPair[1])return null;
+        const score=scorePair(row);
+        if(!completeScore(score)||score[0]===score[1])return null;
+        return score[0]&gt;score[1]?teamPair[0]:teamPair[1];
+      }
+      function recalculateTournament(){
+        const groups=calculateStandings();
+        const allGroupsComplete=groupCards.every(card=&gt;completeScore(scorePair(card)));
+        renderStandings(groups,allGroupsComplete);
+        const sf1Text=root.querySelector(&#x27;#hp-sf1-teams&#x27;);
+        const sf2Text=root.querySelector(&#x27;#hp-sf2-teams&#x27;);
+        const finalText=root.querySelector(&#x27;#hp-final-teams&#x27;);
+        semifinalTeams[0]=null;semifinalTeams[1]=null;
+        if(allGroupsComplete){
+          const winners=[&#x27;A&#x27;,&#x27;B&#x27;,&#x27;C&#x27;].map(g=&gt;groups[g][0]).sort(normalizedComparator);
+          const bestSecond=[&#x27;A&#x27;,&#x27;B&#x27;,&#x27;C&#x27;].map(g=&gt;groups[g][1]).sort(normalizedComparator)[0];
+          semifinalTeams[0]=[winners[0].id,bestSecond.id];
+          semifinalTeams[1]=[winners[1].id,winners[2].id];
+          sf1Text.textContent=`${teams[semifinalTeams[0][0]].name} vs. ${teams[semifinalTeams[0][1]].name}`;
+          sf2Text.textContent=`${teams[semifinalTeams[1][0]].name} vs. ${teams[semifinalTeams[1][1]].name}`;
+        }else{
+          const completed=groupCards.filter(card=&gt;completeScore(scorePair(card))).length;
+          sf1Text.textContent=`Pendiente: ${completed} de ${groupCards.length} resultados cargados`;
+          sf2Text.textContent=&#x27;Se completa al finalizar los grupos&#x27;;
+        }
+        const sf1Winner=knockoutWinner(root.querySelector(&#x27;#hp-sf1&#x27;),semifinalTeams[0]||[]);
+        const sf2Winner=knockoutWinner(root.querySelector(&#x27;#hp-sf2&#x27;),semifinalTeams[1]||[]);
+        const finalTeams=sf1Winner&amp;&amp;sf2Winner?[sf1Winner,sf2Winner]:[];
+        finalText.textContent=finalTeams.length?`${teams[finalTeams[0]].name} vs. ${teams[finalTeams[1]].name}`:&#x27;Se completa al finalizar las semifinales&#x27;;
+        const finalWinner=knockoutWinner(root.querySelector(&#x27;#hp-final&#x27;),finalTeams);
+        root.querySelector(&#x27;#hp-champion&#x27;).textContent=finalWinner?`Campeón: ${teams[finalWinner].name}`:&#x27;Campeón: pendiente&#x27;;
+      }
       function refreshResultState(input){
         const match=input.closest(&#x27;.hp-match&#x27;)||input.closest(&#x27;tr&#x27;);
         if(!match)return;
@@ -1695,10 +1782,12 @@ html&gt;body{padding:0}&lt;/style&gt;
           const values=resultInputs.map(x=&gt;x.value);
           localStorage.setItem(storageKey,JSON.stringify(values));
           refreshResultState(input);
+          recalculateTournament();
           save.textContent=&#x27;Resultado guardado automáticamente&#x27;;
           window.setTimeout(()=&gt;save.textContent=&#x27;&#x27;,1600);
         });
       });
+      recalculateTournament();
     })();
   &lt;/script&gt;
 &lt;/div&gt;
