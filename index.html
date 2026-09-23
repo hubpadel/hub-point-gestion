@@ -704,5 +704,7 @@ setInterval(()=>{if(!document.querySelector('.modal.open'))refreshAll()},5000);
 window.addEventListener('focus',()=>{if(!document.querySelector('.modal.open'))refreshAll()});
 
 if($('#financeMonth'))$('#financeMonth').addEventListener('change',()=>renderOpenCourtFinance());
+const requestedView=new URLSearchParams(window.location.search).get('view');
+if(['agenda','alumnos','profesores','pagos','finanzas','reportes'].includes(requestedView))switchView(requestedView);
 </script>
 </body></html>
