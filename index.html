@@ -65,6 +65,12 @@ main{max-width:1320px;margin:20px auto;padding:0 16px} .view{display:none} .view
 <div class="table-wrap"><table><thead><tr><th>Alumno</th><th>Teléfono</th><th>Estado</th><th>Fecha baja</th><th>Observaciones</th><th>Acciones</th></tr></thead><tbody id="studentsBody"></tbody></table></div>
 </section>
 
+<section id="jugadores" class="view">
+<div id="playersStatus" class="status" role="status">Cargando jugadores…</div>
+<div class="toolbar"><button id="newPlayerBtn" class="primary">+ Nuevo jugador</button><button id="reloadPlayersBtn">Actualizar jugadores</button></div>
+<div class="table-wrap"><table><thead><tr><th>Jugador/a</th><th>Teléfono</th><th>Sexo</th><th>Categoría</th><th>Acciones</th></tr></thead><tbody id="playersBody"></tbody></table></div>
+</section>
+
 <section id="profesores" class="view">
 <div class="toolbar"><button id="newTeacherBtn" class="primary">+ Nuevo profesor</button></div>
 <div class="table-wrap"><table><thead><tr><th>Profesor</th><th>Teléfono</th><th>%</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="teachersBody"></tbody></table></div>
@@ -124,6 +130,22 @@ main{max-width:1320px;margin:20px auto;padding:0 16px} .view{display:none} .view
 <div id="cancelModal" class="modal"><div class="modal-card"><div class="modal-head"><h3>Dar de baja alumno</h3><button data-close="cancelModal">✕</button></div><input type="hidden" id="cancelStudentId"><p id="cancelStudentLabel"></p>
 <div class="grid2"><div><label>Fecha de baja</label><input id="cancelDate" type="date"></div><div><label>Motivo</label><input id="cancelReason"></div></div>
 <div class="toolbar" style="margin-top:14px"><button id="confirmCancel" class="danger">Confirmar baja</button></div></div></div>
+
+<!-- JUGADOR -->
+<div id="playerModal" class="modal"><div class="modal-card">
+<div class="modal-head"><h3 id="playerModalTitle">Jugador/a</h3><button data-close="playerModal" aria-label="Cerrar">✕</button></div>
+<form id="playerForm">
+<input type="hidden" id="playerId">
+<div class="grid2">
+<div><label for="playerName">Nombre</label><input id="playerName" required></div>
+<div><label for="playerPhone">Teléfono</label><input id="playerPhone" type="tel"></div>
+<div><label for="playerSex">Sexo</label><input id="playerSex" list="playerSexOptions"><datalist id="playerSexOptions"><option value="Femenino"><option value="Masculino"></datalist></div>
+<div><label for="playerCategory">Categoría</label><input id="playerCategory" placeholder="Ej.: 8va"></div>
+</div>
+<p id="playerFormError" role="alert" style="color:var(--bad)"></p>
+<div class="toolbar" style="margin-top:14px"><button id="savePlayer" type="submit" class="primary">Guardar</button></div>
+</form>
+</div></div>
 
 <!-- PROFESOR -->
 <div id="teacherModal" class="modal"><div class="modal-card"><div class="modal-head"><h3>Profesor</h3><button data-close="teacherModal">✕</button></div><input type="hidden" id="teacherId">
@@ -190,6 +212,7 @@ main{max-width:1320px;margin:20px auto;padding:0 16px} .view{display:none} .view
 const db=window.supabase.createClient('https://jpzoaskdtgfvvfpdbqox.supabase.co','sb_publishable_yj3PONOs9YIlwYFiqiuV-A_ogIDN-Pr');
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 let students=[],teachers=[],classes=[],payments=[];
+let players=[],playersRequest=0;
 const TIMES=Array.from({length:10},(_,i)=>`${String(8+i).padStart(2,'0')}:00`);
 
 function localISO(d=new Date()){const x=new Date(d);x.setMinutes(x.getMinutes()-x.getTimezoneOffset());return x.toISOString().slice(0,10)}
@@ -227,6 +250,7 @@ async function refreshAll(){
     setStatus(`Conectado · ${students.length} alumnos · ${teachers.length} profesores · ${classes.length} clases`);
     fillSelects();renderStudents();renderTeachers();renderAgenda();
     await loadPayments();
+    await loadPlayers();
   }catch(e){setStatus('Error de conexión: '+e.message,true)}
 }
 
@@ -247,7 +271,7 @@ function fillSelects(){
   refillSelectPreservingValue('agendaTeacherFilter',agendaHtml);
 }
 
-function switchView(id){$$('.view').forEach(v=>v.classList.toggle('active',v.id===id));$$('nav button').forEach(b=>b.classList.toggle('primary',b.dataset.view===id));if(id==='pagos')loadPayments();if(id==='finanzas')renderFinance()}
+function switchView(id){$$('.view').forEach(v=>v.classList.toggle('active',v.id===id));$$('nav button').forEach(b=>b.classList.toggle('primary',b.dataset.view===id));if(id==='pagos')loadPayments();if(id==='jugadores')loadPlayers();if(id==='finanzas')renderFinance()}
 $$('nav button').forEach(b=>b.onclick=()=>switchView(b.dataset.view));
 
 function paymentForClass(c){
@@ -295,6 +319,97 @@ function renderAgenda(){
 function renderStudents(){
   $('#studentsBody').innerHTML=students.length?students.map(s=>`<tr><td><b>${s.nombre}</b></td><td>${s.telefono||''}</td><td>${s.activo!==false?'<span class="badge good">Activo</span>':'<span class="badge warn">Baja</span>'}</td><td>${s.fecha_baja||''}</td><td>${s.observaciones||''}</td><td><button onclick="editStudent('${s.id}')">Editar</button> ${s.activo!==false?`<button onclick="cancelStudent('${s.id}')">Dar de baja</button>`:`<button onclick="reactivateStudent('${s.id}')">Dar de alta</button>`}</td></tr>`).join(''):'<tr><td colspan="6">No hay alumnos.</td></tr>';
 }
+// JUGADORES: errores independientes de los demás módulos.
+async function loadPlayers(){
+  const request=++playersRequest;
+  try{
+    const result=await db.from('jugadores').select('id,nombre,telefono,sexo,categoria').order('nombre');
+    if(result.error)throw result.error;
+    if(request!==playersRequest)return;
+    players=result.data||[];
+    renderPlayers();
+    $('#playersStatus').textContent=players.length+' jugador'+(players.length===1?'':'es')+' cargado'+(players.length===1?'':'s')+' desde Supabase';
+    $('#playersStatus').className='status';
+  }catch(e){
+    if(request!==playersRequest)return;
+    $('#playersStatus').textContent='No se pudieron actualizar los jugadores: '+e.message;
+    $('#playersStatus').className='status bad';
+  }
+}
+
+function renderPlayers(){
+  const body=$('#playersBody');
+  body.replaceChildren();
+  if(!players.length){
+    const cell=body.insertRow().insertCell();
+    cell.colSpan=5;
+    cell.textContent='No hay jugadores registrados.';
+    return;
+  }
+  players.forEach(p=>{
+    const row=body.insertRow();
+    [p.nombre,p.telefono,p.sexo,p.categoria].forEach(value=>{row.insertCell().textContent=value??''});
+    const button=document.createElement('button');
+    button.type='button';
+    button.textContent='Editar';
+    button.onclick=()=>editPlayer(p.id);
+    row.insertCell().appendChild(button);
+  });
+}
+
+$('#newPlayerBtn').onclick=()=>{
+  $('#playerForm').reset();
+  $('#playerId').value='';
+  $('#playerFormError').textContent='';
+  $('#playerModalTitle').textContent='Nuevo jugador';
+  openM('playerModal');
+  $('#playerName').focus();
+};
+
+window.editPlayer=id=>{
+  const player=players.find(p=>String(p.id)===String(id));
+  if(!player)return;
+  $('#playerId').value=player.id;
+  $('#playerName').value=player.nombre??'';
+  $('#playerPhone').value=player.telefono??'';
+  $('#playerSex').value=player.sexo??'';
+  $('#playerCategory').value=player.categoria??'';
+  $('#playerFormError').textContent='';
+  $('#playerModalTitle').textContent='Editar jugador';
+  openM('playerModal');
+};
+
+async function savePlayer(event){
+  event.preventDefault();
+  const button=$('#savePlayer');
+  if(button.disabled)return;
+  const id=$('#playerId').value;
+  const obj={
+    nombre:$('#playerName').value.trim(),
+    telefono:$('#playerPhone').value.trim()||null,
+    sexo:$('#playerSex').value.trim()||null,
+    categoria:$('#playerCategory').value.trim()||null
+  };
+  $('#playerFormError').textContent='';
+  if(!obj.nombre){$('#playerFormError').textContent='Ingresá el nombre.';return}
+  button.disabled=true;
+  button.textContent='Guardando…';
+  try{
+    const query=id?db.from('jugadores').update(obj).eq('id',id):db.from('jugadores').insert(obj);
+    const result=await query.select('id').single();
+    if(result.error)throw result.error;
+    closeM('playerModal');
+    await loadPlayers();
+  }catch(e){
+    $('#playerFormError').textContent='No se pudo guardar el jugador: '+e.message;
+  }finally{
+    button.disabled=false;
+    button.textContent='Guardar';
+  }
+}
+$('#playerForm').onsubmit=savePlayer;
+$('#reloadPlayersBtn').onclick=loadPlayers;
+
 function renderTeachers(){
   $('#teachersBody').innerHTML=teachers.length?teachers.map(t=>`<tr><td><b>${t.nombre}</b></td><td>${t.telefono||''}</td><td>${t.porcentaje_liquidacion||50}%</td><td>${t.activo!==false?'Activo':'Inactivo'}</td><td><button onclick="editTeacher('${t.id}')">Editar</button> <button onclick="mergeTeacher('${t.id}')">Fusionar</button> <button class="danger" onclick="deleteTeacher('${t.id}')">Eliminar</button></td></tr>`).join(''):'<tr><td colspan="5">No hay profesores.</td></tr>';
 }
@@ -705,3 +820,4 @@ window.addEventListener('focus',()=>{if(!document.querySelector('.modal.open'))r
 if($('#financeMonth'))$('#financeMonth').addEventListener('change',()=>renderOpenCourtFinance());
 </script>
 </body></html>
+
