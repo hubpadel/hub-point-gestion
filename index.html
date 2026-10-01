@@ -68,7 +68,12 @@ main{max-width:1320px;margin:20px auto;padding:0 16px} .view{display:none} .view
 <section id="jugadores" class="view">
 <div id="playersStatus" class="status" role="status">Cargando jugadores…</div>
 <div class="toolbar"><button id="newPlayerBtn" class="primary">+ Nuevo jugador</button><button id="reloadPlayersBtn">Actualizar jugadores</button></div>
-<div class="table-wrap"><table><thead><tr><th>Jugador/a</th><th>Teléfono</th><th>Sexo</th><th>Categoría</th><th>Acciones</th></tr></thead><tbody id="playersBody"></tbody></table></div>
+<div class="toolbar">
+<div style="flex:1;min-width:180px"><label for="playerSearch">Buscar jugador</label><input id="playerSearch" type="search" placeholder="Nombre o teléfono"></div>
+<div style="min-width:180px"><label for="playerCategoryFilter">Categoría</label><select id="playerCategoryFilter"><option value="">Todas las categorías</option></select></div>
+</div>
+<p id="playersCount" class="muted" role="status"></p>
+<div id="playersBody"></div>
 </section>
 
 <section id="profesores" class="view">
@@ -136,6 +141,7 @@ main{max-width:1320px;margin:20px auto;padding:0 16px} .view{display:none} .view
 <div class="modal-head"><h3 id="playerModalTitle">Jugador/a</h3><button data-close="playerModal" aria-label="Cerrar">✕</button></div>
 <form id="playerForm">
 <input type="hidden" id="playerId">
+<p id="playerStudentHint" class="muted" hidden>Este jugador está vinculado a Alumnos. Su nombre y teléfono se actualizan desde esa sección.</p>
 <div class="grid2">
 <div><label for="playerName">Nombre</label><input id="playerName" required></div>
 <div><label for="playerPhone">Teléfono</label><input id="playerPhone" type="tel"></div>
@@ -323,7 +329,7 @@ function renderStudents(){
 async function loadPlayers(){
   const request=++playersRequest;
   try{
-    const result=await db.from('jugadores').select('id,nombre,telefono,sexo,categoria').order('nombre');
+    const result=await db.from('jugadores').select('id,nombre,telefono,sexo,categoria,alumno_id').order('nombre');
     if(result.error)throw result.error;
     if(request!==playersRequest)return;
     players=result.data||[];
@@ -332,34 +338,74 @@ async function loadPlayers(){
     $('#playersStatus').className='status';
   }catch(e){
     if(request!==playersRequest)return;
-    $('#playersStatus').textContent='No se pudieron actualizar los jugadores: '+e.message;
+    $('#playersStatus').textContent=e.code==='42703'?'Falta activar la sincronización de alumnos en Supabase.':'No se pudieron actualizar los jugadores: '+e.message;
     $('#playersStatus').className='status bad';
   }
 }
 
-function renderPlayers(){
-  const body=$('#playersBody');
-  body.replaceChildren();
-  if(!players.length){
-    const cell=body.insertRow().insertCell();
-    cell.colSpan=5;
-    cell.textContent='No hay jugadores registrados.';
-    return;
-  }
-  players.forEach(p=>{
-    const row=body.insertRow();
-    [p.nombre,p.telefono,p.sexo,p.categoria].forEach(value=>{row.insertCell().textContent=value??''});
-    const button=document.createElement('button');
-    button.type='button';
-    button.textContent='Editar';
-    button.onclick=()=>editPlayer(p.id);
-    row.insertCell().appendChild(button);
+function playerText(value){return String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase().replace(/\s+/g,' ')}
+function playerCategory(value){
+  const text=playerText(value);
+  const match=text.match(/^([1-9])\s*(?:ra|da|ta|ma|va|na|ro|do|to|mo|vo|no|[ªº°])?$/);
+  if(match)return {key:match[1],label:['','1ra','2da','3ra','4ta','5ta','6ta','7ma','8va','9na'][Number(match[1])]};
+  return {key:text||'__sin_categoria__',label:text?String(value).trim():'Sin categoría'};
+}
+function orderedPlayerCategories(){
+  const categories=new Map();
+  players.forEach(p=>{const c=playerCategory(p.categoria);if(!categories.has(c.key))categories.set(c.key,c)});
+  return [...categories.values()].sort((a,b)=>{
+    if(a.key==='__sin_categoria__')return b.key===a.key?0:1;
+    if(b.key==='__sin_categoria__')return -1;
+    return a.label.localeCompare(b.label,'es',{numeric:true});
   });
 }
+function renderPlayers(){
+  const select=$('#playerCategoryFilter'),selected=select.value;
+  select.replaceChildren(new Option('Todas las categorías',''));
+  orderedPlayerCategories().forEach(c=>select.add(new Option(c.label,c.key)));
+  if([...select.options].some(o=>o.value===selected))select.value=selected;
+  renderPlayerGroups();
+}
+function renderPlayerGroups(){
+  const body=$('#playersBody'),search=playerText($('#playerSearch').value),filter=$('#playerCategoryFilter').value;
+  const digits=search.replace(/\D/g,'');
+  const visible=players.filter(p=>{
+    const matchesText=!search||playerText(p.nombre).includes(search)||playerText(p.telefono).includes(search)||(digits.length>0&&/^[\d\s+().-]+$/.test(search)&&String(p.telefono||'').replace(/\D/g,'').includes(digits));
+    return matchesText&&(!filter||playerCategory(p.categoria).key===filter);
+  });
+  $('#playersCount').textContent=visible.length+' de '+players.length+' jugadores';
+  body.replaceChildren();
+  if(!visible.length){
+    const p=document.createElement('p');
+    p.textContent=players.length?'No hay jugadores que coincidan con la búsqueda.':'No hay jugadores registrados.';
+    body.appendChild(p);return;
+  }
+  orderedPlayerCategories().forEach(category=>{
+    const group=visible.filter(p=>playerCategory(p.categoria).key===category.key).sort((a,b)=>String(a.nombre||'').localeCompare(String(b.nombre||''),'es'));
+    if(!group.length)return;
+    const section=document.createElement('section');section.style.marginBottom='22px';
+    const heading=document.createElement('h3');heading.textContent=category.label+' · '+group.length;section.appendChild(heading);
+    const wrap=document.createElement('div');wrap.className='table-wrap';
+    const table=document.createElement('table');
+    const header=table.createTHead().insertRow();
+    ['Jugador/a','Teléfono','Sexo','Origen','Acciones'].forEach(label=>{const th=document.createElement('th');th.scope='col';th.textContent=label;header.appendChild(th)});
+    const rows=table.createTBody();
+    group.forEach(p=>{
+      const row=rows.insertRow();
+      [p.nombre,p.telefono,p.sexo,p.alumno_id?'Alumno':'Jugador'].forEach(value=>{row.insertCell().textContent=value??''});
+      const button=document.createElement('button');button.type='button';button.textContent='Editar';button.onclick=()=>editPlayer(p.id);
+      row.insertCell().appendChild(button);
+    });
+    wrap.appendChild(table);section.appendChild(wrap);body.appendChild(section);
+  });
+}
+
 
 $('#newPlayerBtn').onclick=()=>{
   $('#playerForm').reset();
   $('#playerId').value='';
+  $('#playerName').readOnly=false;$('#playerPhone').readOnly=false;
+  $('#playerStudentHint').hidden=true;
   $('#playerFormError').textContent='';
   $('#playerModalTitle').textContent='Nuevo jugador';
   openM('playerModal');
@@ -370,6 +416,8 @@ window.editPlayer=id=>{
   const player=players.find(p=>String(p.id)===String(id));
   if(!player)return;
   $('#playerId').value=player.id;
+  $('#playerName').readOnly=!!player.alumno_id;$('#playerPhone').readOnly=!!player.alumno_id;
+  $('#playerStudentHint').hidden=!player.alumno_id;
   $('#playerName').value=player.nombre??'';
   $('#playerPhone').value=player.telefono??'';
   $('#playerSex').value=player.sexo??'';
@@ -390,8 +438,10 @@ async function savePlayer(event){
     sexo:$('#playerSex').value.trim()||null,
     categoria:$('#playerCategory').value.trim()||null
   };
+  const existing=players.find(p=>String(p.id)===String(id));
+  if(existing?.alumno_id){delete obj.nombre;delete obj.telefono}
   $('#playerFormError').textContent='';
-  if(!obj.nombre){$('#playerFormError').textContent='Ingresá el nombre.';return}
+  if(!existing?.alumno_id&&!obj.nombre){$('#playerFormError').textContent='Ingresá el nombre.';return}
   button.disabled=true;
   button.textContent='Guardando…';
   try{
@@ -409,6 +459,8 @@ async function savePlayer(event){
 }
 $('#playerForm').onsubmit=savePlayer;
 $('#reloadPlayersBtn').onclick=loadPlayers;
+$('#playerSearch').oninput=renderPlayerGroups;
+$('#playerCategoryFilter').onchange=renderPlayerGroups;
 
 function renderTeachers(){
   $('#teachersBody').innerHTML=teachers.length?teachers.map(t=>`<tr><td><b>${t.nombre}</b></td><td>${t.telefono||''}</td><td>${t.porcentaje_liquidacion||50}%</td><td>${t.activo!==false?'Activo':'Inactivo'}</td><td><button onclick="editTeacher('${t.id}')">Editar</button> <button onclick="mergeTeacher('${t.id}')">Fusionar</button> <button class="danger" onclick="deleteTeacher('${t.id}')">Eliminar</button></td></tr>`).join(''):'<tr><td colspan="5">No hay profesores.</td></tr>';
@@ -820,4 +872,5 @@ window.addEventListener('focus',()=>{if(!document.querySelector('.modal.open'))r
 if($('#financeMonth'))$('#financeMonth').addEventListener('change',()=>renderOpenCourtFinance());
 </script>
 </body></html>
+
 
