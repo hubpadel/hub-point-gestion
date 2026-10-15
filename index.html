@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>HUB POINT · Gestión de Clases</title>
+<title>HUB GESTION INTEGRAL POINT</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
@@ -34,7 +34,7 @@ main{max-width:1320px;margin:20px auto;padding:0 16px} .view{display:none} .view
 </head>
 <body>
 <header><div class="head">
-<div class="brand"><b>HUB POINT · Gestión de Clases</b><span>Base compartida online · v1.6-CANCHA-ABIERTA-12-SUPLENTES</span></div>
+<div class="brand"><b>HUB GESTION INTEGRAL POINT</b><span>Base compartida online · v1.6-CANCHA-ABIERTA-12-SUPLENTES</span></div>
 <nav>
 <button class="primary" data-view="agenda">Agenda</button>
 <button data-view="alumnos">Alumnos</button>
@@ -90,7 +90,7 @@ main{max-width:1320px;margin:20px auto;padding:0 16px} .view{display:none} .view
 <section id="finanzas" class="view">
 <div class="toolbar"><input id="financeMonth" type="month" style="max-width:180px"></div>
 <div class="kpis">
-<div class="kpi"><span>Ingresos</span><b id="fIncome">$0</b></div>
+<div class="kpi"><span>Ingresos · Clases + Corporativos</span><b id="fIncome">Pendiente de consulta</b></div>
 <div class="kpi"><span>Transferencias</span><b id="fTransfer">$0</b></div>
 <div class="kpi"><span>Efectivo</span><b id="fCash">$0</b></div>
 <div class="kpi"><span>A liquidar profesores</span><b id="fTeacher">$0</b></div>
@@ -473,7 +473,8 @@ function renderFinance(){
   const m=$('#financeMonth').value||monthKey(localISO()),rows=payments.filter(p=>monthKey(p.fecha_cobro)===m);
   const inc=rows.reduce((s,p)=>s+Number(p.importe||0),0),tr=rows.filter(p=>p.medio_pago==='Transferencia').reduce((s,p)=>s+Number(p.importe||0),0),cash=rows.filter(p=>p.medio_pago==='Efectivo').reduce((s,p)=>s+Number(p.importe||0),0);
   let teacherTotal=0;const data=teachers.map(t=>{const x=settlement(t.id,m);teacherTotal+=x.total;return{t,...x}}).filter(x=>x.inc>0);
-  $('#fIncome').textContent=money(inc);$('#fTransfer').textContent=money(tr);$('#fCash').textContent=money(cash);$('#fTeacher').textContent=money(teacherTotal);
+  const corp=window.PointCorporativosFinance;
+  $('#fIncome').textContent=corp?.month===m&&corp.status==='ready'?new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',minimumFractionDigits:2,maximumFractionDigits:2}).format(inc+corp.total/100):corp?.month===m&&corp.status==='error'?'Total no disponible':'Pendiente de consulta';$('#fTransfer').textContent=money(tr);$('#fCash').textContent=money(cash);$('#fTeacher').textContent=money(teacherTotal);
   $('#settlementBody').innerHTML=data.length?data.map(x=>`<tr><td>${x.t.nombre}</td><td>${money(x.inc)}</td><td>${x.pct}%</td><td><b>${money(x.total)}</b></td></tr>`).join(''):'<tr><td colspan="4">Sin movimientos.</td></tr>';
 }
 
@@ -871,6 +872,8 @@ window.addEventListener('focus',()=>{if(!document.querySelector('.modal.open'))r
 
 if($('#financeMonth'))$('#financeMonth').addEventListener('change',()=>renderOpenCourtFinance());
 </script>
+<script src="corporativos-core.js"></script>
+<script src="corporativos.js"></script>
 </body></html>
 
 

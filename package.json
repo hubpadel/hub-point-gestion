@@ -1,0 +1,15 @@
+{
+  "name": "hub-gestion-integral-point",
+  "private": true,
+  "scripts": {
+    "test": "node --test --test-isolation=none tests/core.test.cjs tests/finance.test.cjs tests/ui.test.cjs tests/postgres.test.cjs",
+    "test:concurrency": "node tests/concurrency-native.cjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.9",
+    "pg": "8.23.1"
+  },
+  "optionalDependencies": {
+    "@embedded-postgres/windows-x64": "17.10.0-beta.17"
+  }
+}
