@@ -1,0 +1,11 @@
+{
+  "ok": true,
+  "version": "PostgreSQL 17.10 on x86_64-windows, compiled by msvc-19.44.35226, 64-bit",
+  "results": [
+    "Dos cobros simultáneos: uno rechazado por sobrepago",
+    "Mismo pago simultáneo: una única fila",
+    "Reducción de presupuesto concurrente rechazada",
+    "Cobro concurrente respeta presupuesto reducido"
+  ],
+  "environment": "PostgreSQL local con tres conexiones independientes; sin conexión a producción"
+}
