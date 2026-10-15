@@ -219,7 +219,7 @@ const db=window.supabase.createClient('https://jpzoaskdtgfvvfpdbqox.supabase.co'
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 let students=[],teachers=[],classes=[],payments=[];
 let players=[],playersRequest=0;
-const TIMES=Array.from({length:10},(_,i)=>`${String(8+i).padStart(2,'0')}:00`);
+const TIMES=Array.from({length:12},(_,i)=>`${String(8+i).padStart(2,'0')}:00`);
 
 function localISO(d=new Date()){const x=new Date(d);x.setMinutes(x.getMinutes()-x.getTimezoneOffset());return x.toISOString().slice(0,10)}
 function monthKey(v){return (v||'').slice(0,7)} function monthFirst(v){return v?monthKey(v)+'-01':null}
