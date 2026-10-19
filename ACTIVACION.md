@@ -1,6 +1,6 @@
 # Activación — 19/10/2026
 
-Estado: revisión de producción completada en modo de sólo lectura. No se aplicaron migraciones ni se publicó la nueva interfaz.
+Estado: auditoría y simulación transaccional autorizada completadas. La simulación finalizó con ROLLBACK. No se aplicaron migraciones permanentes ni se publicó la nueva interfaz.
 
 Repositorio: hubpadel/hub-point-gestion, rama principal main. Acceso administrativo confirmado. El HTML principal coincide con la base utilizada, normalizando los finales de línea.
 
@@ -14,6 +14,6 @@ Conflictos de capacidad previos: 16/10/2026 a las 15:00 y 16:00: una clase y tre
 
 `planner-access.sql` mantiene la audiencia ya verificada (anon/authenticated), habilita sólo lectura/alta/edición en las dos tablas nuevas, lectura de la vista y ejecución de las operaciones necesarias. No concede DELETE, TRUNCATE, roles nuevos, ni altera permisos sobre las tablas originales. No crea usuarios ni una autenticación nueva.
 
-La simulación prevista reúne las cuatro migraciones en una transacción, valida las restricciones y finaliza con ROLLBACK. La revisión automática bloqueó pulsar Run porque esta prueba sobre producción podría tomar bloqueos durante el procesamiento de las 3.149 clases y requería autorización específica. No se ejecutó. No se intentó otra vía para eludir el bloqueo.
+La simulación reúne las cuatro migraciones en una transacción, valida las restricciones y finaliza con ROLLBACK. La revisión automática bloqueó el primer intento porque esta prueba sobre producción podía tomar bloqueos durante el procesamiento de las 3.149 clases y requería autorización específica. Se solicitó y recibió esa autorización del usuario antes de volver a pulsar Run. La simulación pasó: 3.141 registros asignados, ocho registros del día histórico conflictivo conservados sin cancha para revisión, permiso de ejecución de la operación Planner verificado. Las restricciones diferidas se comprobaron antes del ROLLBACK.
 
-Pendiente de aprobación específica: ejecutar la simulación transaccional en la base de producción, que puede bloquear temporalmente escrituras, sin dejar cambios persistentes. Si pasa, se requiere aplicar la transacción definitiva y publicar la interfaz, siguiendo la autorización que corresponda. No mezclar el despliegue de interfaz con una base aún sin migrar.
+Pendiente de aprobación específica: aplicar la transacción definitiva en producción y publicar la interfaz. La autorización recibida en el diálogo cubrió la prueba con reversión completa. No mezclar el despliegue de interfaz con una base aún sin migrar. Validación local final: 19 pruebas aprobadas y cuatro escenarios concurrentes en PostgreSQL local aprobados.
