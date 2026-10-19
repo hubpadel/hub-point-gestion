@@ -3,7 +3,9 @@
   "private": true,
   "scripts": {
     "test": "node --test --test-isolation=none tests/core.test.cjs tests/finance.test.cjs tests/ui.test.cjs tests/postgres.test.cjs",
-    "test:concurrency": "node tests/concurrency-native.cjs"
+    "test:concurrency": "node tests/concurrency-native.cjs",
+    "test:planner": "node --test --test-isolation=none planner.test.cjs planner-auto.test.cjs",
+    "test:planner:concurrency": "node planner-concurrency.cjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.9",

@@ -1,0 +1,11 @@
+{
+  "ok": true,
+  "version": "PostgreSQL 17.10 on x86_64-windows, compiled by msvc-19.44.35226, 64-bit",
+  "checks": [
+    "Planner vs alta nativa simultánea: alta nativa rechazada",
+    "Alta nativa vs Planner simultáneo: Planner rechazado",
+    "Dos altas Planner simultáneas: una sola reserva",
+    "Dos clases compiten por la última cancha: sólo se confirma una"
+  ],
+  "environment": "PostgreSQL local con tres conexiones; sin producción"
+}

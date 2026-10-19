@@ -1,0 +1,17 @@
+{
+  "ok": true,
+  "backend": "simulado; sin tráfico a producción",
+  "checks": [
+    "vistas diaria, semanal, mensual",
+    "leyenda de siete colores",
+    "alta",
+    "edición del mismo ID",
+    "arrastre y confirmación",
+    "error de permisos conserva formulario",
+    "agenda sincronizada sin duplicados",
+    "modal original conservado",
+    "pantalla móvil",
+    "fin de clase automático de una hora"
+  ],
+  "errors": []
+}
