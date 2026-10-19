@@ -49,6 +49,6 @@ test('Planner: datos originales, conflictos, grupos, lluvia, concurrencia optimi
 });
 test('El programa original sólo incorpora el cargador del Planner',()=>{
  const original=fs.readFileSync(path.join(__dirname,'planner-base-index.html'),'utf8');const result=fs.readFileSync(path.join(__dirname,'index.html'),'utf8');
- assert.equal(result.replace('<link rel="stylesheet" href="planner.css"><script src="planner.js?v=20261019"></script>',''),original);
+ assert.equal(result.replace('<link rel="stylesheet" href="planner.css?v=20261019-visual2"><script src="planner.js?v=20261019-visual2"></script>',''),original);
 
 });
