@@ -1,0 +1,19 @@
+{
+  "ok": true,
+  "backend": "Simulado; solicitudes interceptadas; sin producción",
+  "checks": [
+    "botón principal Clases a recuperar",
+    "Asistencia marca suspensión grupal",
+    "reintento sin duplicar",
+    "pendiente con alumnos profesor y fecha de suspensión",
+    "persistencia tras recargar",
+    "reagendar desde listado",
+    "Agenda automática Clase recuperada en violeta con alumnos y profesor",
+    "reserva única al reagendar otra vez",
+    "Planner con nombres",
+    "sólo pendientes; desaparece al agendar y persiste tras recargar",
+    "realizada desde Agenda",
+    "pantalla móvil"
+  ],
+  "errors": []
+}

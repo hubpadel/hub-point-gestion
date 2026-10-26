@@ -4,6 +4,7 @@
   "checks": [
     "Dos altas simultáneas de la misma clase: un solo crédito",
     "Dos recuperaciones por la misma cancha: una sola reserva y rollback de la otra",
-    "Dos ediciones simultáneas: se rechaza la versión vieja"
+    "Dos ediciones simultáneas: se rechaza la versión vieja",
+    "Dos coordinadores suspenden el mismo grupo: una recuperación y dos participantes"
   ]
 }
