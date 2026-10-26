@@ -1,0 +1,14 @@
+{
+  "ok": true,
+  "environment": "Navegador móvil y PostgreSQL embebido; red interceptada; sin producción",
+  "checks": [
+    "coordinador habilita dos opciones y genera enlace",
+    "WhatsApp listo para compartir",
+    "alumno ve sólo opciones habilitadas",
+    "elección agenda al grupo completo",
+    "recarga muestra reserva confirmada",
+    "una sola reserva",
+    "enlace inválido rechazado"
+  ],
+  "errors": []
+}
