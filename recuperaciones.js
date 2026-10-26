@@ -7,7 +7,7 @@
  el('p','Marcá «Clase a recuperar» en Asistencia. Acá aparecen sólo las clases sin nueva fecha. Al reagendar pasan a la Agenda común como Clase recuperada. No se genera otro cobro ni liquidación.',host);
  const nav=el('button','Clases a recuperar',document.querySelector('nav'));nav.dataset.view='recuperaciones';nav.onclick=()=>{switchView('recuperaciones');load();};
  const agendaHost=el('section',undefined,document.querySelector('#agenda'));agendaHost.id='recuperacionesAgenda';document.querySelector('#agenda').insertBefore(agendaHost,document.querySelector('#agendaList'));
- const access=el('details',undefined,host);el('summary','Acceso para autorizar recuperaciones individuales',access);
+ const access=el('details',undefined,host);el('summary','Acceso del coordinador: individuales y enlaces',access);
  el('p','Ingresá con una cuenta habilitada por administración. Iniciar sesión por sí solo no concede autorización.',access);
  const accessForm=el('form',undefined,access),emailLabel=el('label','Correo',accessForm),email=el('input',undefined,emailLabel);email.type='email';email.autocomplete='username';email.required=true;
  const passwordLabel=el('label','Contraseña',accessForm),password=el('input',undefined,passwordLabel);password.type='password';password.autocomplete='current-password';password.required=true;
@@ -47,6 +47,7 @@
  const card=el('article',undefined,list);card.className='recuperacion-card';
  el('strong','Pendiente · '+(r.origen==='historico'?'Marcada en Asistencia (anterior)':r.motivo==='lluvia'?'Grupal por lluvia':'Individual autorizada'),card);el('p',summary(r),card);el('p',r.observaciones,card);el('p','Nueva fecha: pendiente de reagendar',card);
  const edit=el('button','Reagendar',card);edit.disabled=busy;edit.onclick=()=>openExisting(r);
+ const share=el('button','Habilitar horarios / enviar enlace',card);share.disabled=busy;share.onclick=()=>window.openRecoveryLink(r);
  }if(!list.children.length)el('p','No hay clases pendientes de nueva fecha.',list);agendaRender();}
  async function load(){const token=++generation;ready=false;status.textContent='Consultando recuperaciones…';try{
    const [a,b,c]=await Promise.all([

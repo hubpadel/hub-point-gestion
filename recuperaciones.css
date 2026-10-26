@@ -3,3 +3,4 @@
 .recuperacion-card{border-left:8px solid #A78BFA;background:#f5f3ff;color:#231942;padding:14px;margin:12px 0;border-radius:8px}.recuperacion-card button{margin:4px}
 #recuperacionesAgenda:empty{display:none}#recuperacionAttendanceWrap{grid-column:1/-1;padding:12px;border-left:6px solid #A78BFA;background:#f5f3ff}#recuperacionAttendanceWrap[hidden]{display:none}
 .recuperacion-agenda h3{margin-top:0}.recuperacion-agenda{background:#A78BFA;color:#231942}
+#recoveryLinkDialog .recovery-slot{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;border-bottom:1px solid #ddd;padding:12px 0}#recoveryLinkDialog input{max-width:100%;min-width:0;box-sizing:border-box}#recoveryLinkDialog a{display:block;margin:12px 0}#recoveryLinkDialog div[hidden]{display:none}@media(max-width:600px){#recoveryLinkDialog .recovery-slot{grid-template-columns:1fr}}

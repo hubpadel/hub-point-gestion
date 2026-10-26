@@ -8,7 +8,9 @@
     "test:planner:concurrency": "node planner-concurrency.cjs",
     "test:recuperaciones": "node --test --test-isolation=none recuperaciones.test.cjs recuperaciones-asistencia.test.cjs",
     "test:recuperaciones:browser": "node recuperaciones-asistencia-browser.cjs",
-    "test:recuperaciones:concurrency": "node recuperaciones-concurrency.cjs"
+    "test:recuperaciones:concurrency": "node recuperaciones-concurrency.cjs",
+    "test:recuperaciones:enlaces": "node --test --test-isolation=none recuperaciones-enlaces.test.cjs",
+    "test:recuperaciones:enlaces:browser": "node recuperaciones-enlaces-browser.cjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.9",
