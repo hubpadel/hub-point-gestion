@@ -1,0 +1,22 @@
+const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),assert=require('node:assert/strict');const {execFileSync}=require('node:child_process'),{pathToFileURL}=require('node:url'),{Client}=require('pg');
+(async()=>{const bin=await import(pathToFileURL(require.resolve('@embedded-postgres/windows-x64')).href),runtime=path.join(__dirname,'test-runtime');fs.mkdirSync(runtime,{recursive:true});const data=path.join(runtime,'recuperaciones-'+Date.now()),pwfile=path.join(runtime,'password-'+Date.now()),password=crypto.randomBytes(24).toString('hex');fs.writeFileSync(pwfile,password);let started=false;const clients=[],checks=[];
+try{
+ execFileSync(bin.initdb,['-D',data,'-U','recovery_test','-A','scram-sha-256','--pwfile='+pwfile,'--encoding=UTF8','--locale=C'],{windowsHide:true,stdio:'pipe'});fs.unlinkSync(pwfile);
+ execFileSync(bin.pg_ctl,['-D',data,'-l',path.join(data,'server.log'),'-o','-h 127.0.0.1 -p 55443','-w','start'],{windowsHide:true,stdio:'ignore'});started=true;
+ for(const application_name of ['recovery_a','recovery_b','recovery_observer']){const c=new Client({host:'127.0.0.1',port:55443,user:'recovery_test',database:'postgres',password,application_name});await c.connect();clients.push(c);}const [a,b,c]=clients;
+ const one=crypto.randomUUID(),two=crypto.randomUUID(),r1=crypto.randomUUID(),r2=crypto.randomUUID();
+ await a.query(`create role anon;create role authenticated;create schema auth;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql as $$select null::uuid$$;
+ create table clases(id uuid primary key,grupo_id uuid,fecha date,hora time,estado text,alumno_id uuid,profesor_id uuid,importe_esperado numeric);
+ create table canchas_abiertas(id uuid primary key,fecha date,hora_inicio time,hora_fin time,cancha text,tipo text,estado text);
+ create table corporativos_eventos(id uuid primary key,fecha date,inicio time,fin time,canchas text,empresa text,estado text);
+ insert into clases(id,fecha,hora,estado,importe_esperado) values('${one}','2026-10-01','10:00','Pendiente',100),('${two}','2026-10-02','10:00','Pendiente',200);`);
+ for(const f of ['planner.sql','planner-guards.sql','planner-auto.sql','planner-access.sql','recuperaciones.sql'])await a.query(fs.readFileSync(path.join(__dirname,f),'utf8'));
+ const blocked=async()=>{for(let n=0;n<100;n++){if((await c.query("select wait_event_type from pg_stat_activity where application_name='recovery_b'")).rows[0]?.wait_event_type==='Lock')return;await new Promise(r=>setTimeout(r,20));}throw Error('No esperó bloqueo');};
+ const create=(client,id,clase)=>client.query("select recuperacion_crear($1,$2,'lluvia','Prueba local')",[id,clase]);
+ const schedule=(client,id,revision,hour='10:00')=>client.query("select recuperacion_programar($1,$2,'2026-10-20',$3,1)",[id,revision,hour]);
+ await a.query('begin');await create(a,r1,one);let pending=create(b,r2,one).then(data=>({data}),error=>({error}));await blocked();await a.query('commit');assert.match((await pending).error?.message||'',/ya tiene/);checks.push('Dos altas simultáneas de la misma clase: un solo crédito');
+ await create(c,r2,two);await a.query('begin');await schedule(a,r1,1);pending=schedule(b,r2,1).then(data=>({data}),error=>({error}));await blocked();await a.query('commit');assert.match((await pending).error?.message||'',/Solapamiento/);checks.push('Dos recuperaciones por la misma cancha: una sola reserva y rollback de la otra');
+ await a.query('begin');await schedule(a,r1,2,'11:00');pending=schedule(b,r1,2,'12:00').then(data=>({data}),error=>({error}));await blocked();await a.query('commit');assert.match((await pending).error?.message||'',/cambió/);checks.push('Dos ediciones simultáneas: se rechaza la versión vieja');
+ assert.equal((await c.query('select count(*)::int n from planner_actividades')).rows[0].n,1);assert.equal((await c.query('select sum(importe_esperado)::int total from clases')).rows[0].total,300);
+ fs.writeFileSync(path.join(__dirname,'recuperaciones-concurrency-results.json'),JSON.stringify({ok:true,environment:'PostgreSQL local; tres conexiones; sin producción',checks},null,2));console.log(JSON.stringify({ok:true,checks}));
+}finally{for(const c of clients){await c.query('rollback').catch(()=>{});await c.end().catch(()=>{});}if(started)execFileSync(bin.pg_ctl,['-D',data,'-w','stop'],{windowsHide:true,stdio:'ignore'});if(fs.existsSync(pwfile))fs.unlinkSync(pwfile);}})().catch(e=>{console.error(e);process.exitCode=1;});
