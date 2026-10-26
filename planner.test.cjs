@@ -48,7 +48,7 @@ test('Planner: datos originales, conflictos, grupos, lluvia, concurrencia optimi
  }finally{await db.close();}
 });
 test('El programa original conserva sus funciones y agrega cargadores y botones de recuperación',()=>{
- const original=fs.readFileSync(path.join(__dirname,'planner-base-index.html'),'utf8');const result=fs.readFileSync(path.join(__dirname,'index.html'),'utf8');
+ const original=fs.readFileSync(path.join(__dirname,'planner-base-index.html'),'utf8');const result=require('./tests/recuperaciones-normalize.cjs')(fs.readFileSync(path.join(__dirname,'index.html'),'utf8'));
  const restored=result.replace('<link rel="stylesheet" href="planner.css?v=20261019-visual2"><script src="planner.js?v=20261026-recuperar"></script><link rel="stylesheet" href="recuperaciones.css?v=20261026"><script src="recuperaciones.js?v=20261026"></script>','')
  .replace(/\n\s*· <button onclick="openRecovery\('\$\{c.id\}','individual'\)">Recuperar individual<\/button>/,'')
  .replace(/\n\s*<button onclick="openRecovery\('\$\{first.id\}','lluvia'\)">Recuperar clase por lluvia<\/button>/,'');

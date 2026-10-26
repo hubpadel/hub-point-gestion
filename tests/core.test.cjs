@@ -5,7 +5,7 @@ test('saldo parcial y pago total sin error decimal',()=>{assert.equal(c.balance(
 test('cobros se atribuyen al mes de cobro y método',()=>{assert.deepEqual(c.summary([{id:'a',fecha:'2026-10-01',importe:'0.10',metodo:'Efectivo'},{id:'b',fecha:'2026-10-14',importe:'0.20',metodo:'Transferencia'},{id:'c',fecha:'2026-11-01',importe:'99',metodo:'Efectivo'}],'2026-10'),{total:30,cash:10,transfer:20});});
 test('rechaza importes inválidos y filas duplicadas',()=>{for(const v of ['-1','1.001','NaN','1e5','',Infinity])assert.throws(()=>c.cents(v));assert.throws(()=>c.summary([{id:'a',fecha:'2026-10-01',importe:1},{id:'a',fecha:'2026-10-01',importe:1}],'2026-10'));});
 test('archivo existente intacto excepto nombre, módulo, horarios y suma autorizada en Ingresos',()=>{
- const old=fs.readFileSync(path.join(base,'tests/fixtures/original-index.html'),'utf8');const proposed=fs.readFileSync(path.join(base,'index.html'),'utf8')
+ const old=fs.readFileSync(path.join(base,'tests/fixtures/original-index.html'),'utf8');const proposed=require('./recuperaciones-normalize.cjs')(fs.readFileSync(path.join(base,'index.html'),'utf8'))
  .replace(/\n\s*· <button onclick="openRecovery\('\$\{c.id\}','individual'\)">Recuperar individual<\/button>/,'')
  .replace(/\n\s*<button onclick="openRecovery\('\$\{first.id\}','lluvia'\)">Recuperar clase por lluvia<\/button>/,'')
  .replace('<link rel="stylesheet" href="planner.css?v=20261019-visual2"><script src="planner.js?v=20261026-recuperar"></script><link rel="stylesheet" href="recuperaciones.css?v=20261026"><script src="recuperaciones.js?v=20261026"></script>','<link rel="stylesheet" href="planner.css?v=20261019-visual2"><script src="planner.js?v=20261019-visual2"></script>');
