@@ -1,5 +1,7 @@
 # Recuperar clase — revisión local del 26/10/2026
 
+**Actualización posterior:** la validación de la migración y siete controles con el esquema real se completaron en una rama aislada de Supabase, posteriormente eliminada. Ver `RECUPERACIONES-SUPABASE.md`, que actualiza los pendientes de este informe inicial. Producción continúa sin cambios; falta habilitar un autorizador real y autorizar la activación.
+
 Implementado y probado localmente. Rama remota de prueba: `codex/recuperar-clase-prueba`. Se entrega como propuesta de revisión, sin fusionar ni desplegar. No se aplicaron migraciones ni se escribieron datos en Supabase de producción.
 
 ## Base y acceso
