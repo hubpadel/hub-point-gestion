@@ -6,9 +6,9 @@ Corrige la primera entrega: una sección al pie de Agenda no cubría el pedido d
 
 1. En Agenda, abrir **Editar** en una clase y seleccionar **Clase a recuperar** en Estado de Asistencia.
 2. Elegir **Grupo completo por lluvia** o **Sólo este alumno (requiere autorización)** y guardar. Se guarda la suspensión y su pendiente en una sola transacción. Fecha, horario, alumno, profesor e importes originales se conservan.
-3. Abrir **Clases a recuperar**, junto a Pagos, Finanzas y Planner. La ficha muestra alumnos, profesor, fecha/hora de suspensión, estado y nueva fecha cuando exista.
-4. Pulsar **Reagendar**, elegir fecha, hora y cancha, y guardar. Se abre automáticamente la Agenda de la nueva fecha con una ficha violeta **Clase recuperada**, alumnos, profesor y referencia a la suspensión. Planner muestra la misma reserva con esos nombres. La clase no se duplica y no genera otro cobro ni liquidación.
-5. Una segunda reprogramación conserva el mismo ID de reserva. El panel mantiene pendientes, programadas y realizadas.
+3. Abrir **Clases a recuperar**, junto a Pagos, Finanzas y Planner. Sólo muestra clases pendientes de nueva fecha, con alumnos, profesor y fecha/hora de suspensión.
+4. Pulsar **Reagendar**, elegir fecha, hora y cancha, y guardar. La ficha desaparece de Clases a recuperar. Se abre automáticamente la Agenda de la nueva fecha con una ficha violeta **Clase recuperada**, alumnos, profesor y referencia a la suspensión. Planner muestra la misma reserva con esos nombres. La clase no se duplica y no genera otro cobro ni liquidación.
+5. Los cambios posteriores se hacen desde Agenda. Una segunda reprogramación conserva el mismo ID de reserva. Las programadas y realizadas no aparecen en Clases a recuperar; sus estados se conservan internamente.
 
 El registro original conserva la fecha de suspensión y el estado Clase a recuperar. Los cambios de fecha/alumno/profesor/importe se guardan por separado para no perder el origen al suspender. La suspensión grupal incluye a todos los participantes de ese grupo, fecha y horario. La individual requiere la cuenta autorizada configurada anteriormente.
 

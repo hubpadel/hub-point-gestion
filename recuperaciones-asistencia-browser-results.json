@@ -11,7 +11,8 @@
     "Agenda automática Clase recuperada en violeta con alumnos y profesor",
     "reserva única al reagendar otra vez",
     "Planner con nombres",
-    "realizadas y filtros",
+    "sólo pendientes; desaparece al agendar y persiste tras recargar",
+    "realizada desde Agenda",
     "pantalla móvil"
   ],
   "errors": []
