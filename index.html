@@ -315,8 +315,10 @@ function renderAgenda(){
             · <span class="badge ${paid?'good':'warn'}">${paid?'Pago: Pagado':'Pago: Pendiente'}</span>
             ${paid?'':` · Debe ${money(c.importe_esperado||0)}`}
             · <button onclick="editAttendance('${c.id}')">Editar</button>
+            · <button onclick="openRecovery('${c.id}','individual')">Recuperar individual</button>
           </div>`;
         }).join('')}
+        <button onclick="openRecovery('${first.id}','lluvia')">Recuperar clase por lluvia</button>
       </div>`;
     }).join('');
     return `<div class="slot"><div class="time">${time}</div><div>${content}</div><button onclick="openClassAt('${time}')">+ Otra</button></div>`;
@@ -874,6 +876,6 @@ if($('#financeMonth'))$('#financeMonth').addEventListener('change',()=>renderOpe
 </script>
 <script src="corporativos-core.js"></script>
 <script src="corporativos.js?v=20261015-agenda"></script>
-<link rel="stylesheet" href="planner.css?v=20261019-visual2"><script src="planner.js?v=20261019-visual2"></script></body></html>
+<link rel="stylesheet" href="planner.css?v=20261019-visual2"><script src="planner.js?v=20261026-recuperar"></script><link rel="stylesheet" href="recuperaciones.css?v=20261026"><script src="recuperaciones.js?v=20261026"></script></body></html>
 
 

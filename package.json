@@ -5,7 +5,10 @@
     "test": "node --test --test-isolation=none tests/core.test.cjs tests/finance.test.cjs tests/ui.test.cjs tests/postgres.test.cjs",
     "test:concurrency": "node tests/concurrency-native.cjs",
     "test:planner": "node --test --test-isolation=none planner.test.cjs planner-auto.test.cjs",
-    "test:planner:concurrency": "node planner-concurrency.cjs"
+    "test:planner:concurrency": "node planner-concurrency.cjs",
+    "test:recuperaciones": "node --test --test-isolation=none recuperaciones.test.cjs",
+    "test:recuperaciones:browser": "node recuperaciones-browser.cjs",
+    "test:recuperaciones:concurrency": "node recuperaciones-concurrency.cjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.9",

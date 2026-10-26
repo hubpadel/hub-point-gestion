@@ -47,8 +47,11 @@ test('Planner: datos originales, conflictos, grupos, lluvia, concurrencia optimi
  assert.equal((await db.query("select count(*)::int n from clases where fecha='2026-10-21'")).rows[0].n,2);
  }finally{await db.close();}
 });
-test('El programa original sólo incorpora el cargador del Planner',()=>{
+test('El programa original conserva sus funciones y agrega cargadores y botones de recuperación',()=>{
  const original=fs.readFileSync(path.join(__dirname,'planner-base-index.html'),'utf8');const result=fs.readFileSync(path.join(__dirname,'index.html'),'utf8');
- assert.equal(result.replace('<link rel="stylesheet" href="planner.css?v=20261019-visual2"><script src="planner.js?v=20261019-visual2"></script>',''),original);
+ const restored=result.replace('<link rel="stylesheet" href="planner.css?v=20261019-visual2"><script src="planner.js?v=20261026-recuperar"></script><link rel="stylesheet" href="recuperaciones.css?v=20261026"><script src="recuperaciones.js?v=20261026"></script>','')
+ .replace(/\n\s*· <button onclick="openRecovery\('\$\{c.id\}','individual'\)">Recuperar individual<\/button>/,'')
+ .replace(/\n\s*<button onclick="openRecovery\('\$\{first.id\}','lluvia'\)">Recuperar clase por lluvia<\/button>/,'');
+ assert.equal(restored.replace(/\r\n/g,'\n'),original.replace(/\r\n/g,'\n'));
 
 });

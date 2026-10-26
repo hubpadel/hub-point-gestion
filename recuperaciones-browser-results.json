@@ -1,0 +1,16 @@
+{
+  "ok": true,
+  "backend": "Simulado; todas las solicitudes interceptadas; sin acceso a producción",
+  "checks": [
+    "botones Agenda",
+    "formulario precargado",
+    "reintento tras respuesta perdida",
+    "grupo sin duplicar",
+    "programación y reprogramación del mismo ID",
+    "color #A78BFA y edición desde Planner",
+    "realización y filtros",
+    "rechazo individual sin autorización",
+    "pantalla móvil"
+  ],
+  "errors": []
+}
