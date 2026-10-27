@@ -1,5 +1,6 @@
 // Exclusivamente cambios permitidos del circuito Asistencia en el HTML original.
 module.exports=html=>html
+ .replaceAll('20261026-profesor','20261026-enlaces')
  .replace('<script src="recuperaciones-enlaces.js?v=20261026-enlaces"></script>','')
  .replaceAll('20261026-enlaces','20261026-asistencia')
  .replace('<option>Clase a recuperar</option>','')
