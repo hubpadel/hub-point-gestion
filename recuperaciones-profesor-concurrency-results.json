@@ -1,0 +1,12 @@
+{
+  "ok": true,
+  "environment": "PostgreSQL local; tres conexiones; sin producción",
+  "checks": [
+    "Dos altas simultáneas de la misma clase: un solo crédito",
+    "Dos recuperaciones por la misma cancha: una sola reserva y rollback de la otra",
+    "Dos ediciones simultáneas: se rechaza la versión vieja",
+    "Dos coordinadores suspenden el mismo grupo: una recuperación y dos participantes",
+    "Dos recuperaciones del mismo profesor toman el mismo turno: una confirma y la otra conserva su pendiente",
+    "Otro alumno del grupo elige distinto horario: recibe la primera reserva sin cambiarla"
+  ]
+}

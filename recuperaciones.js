@@ -47,7 +47,7 @@
  const card=el('article',undefined,list);card.className='recuperacion-card';
  el('strong','Pendiente · '+(r.origen==='historico'?'Marcada en Asistencia (anterior)':r.motivo==='lluvia'?'Grupal por lluvia':'Individual autorizada'),card);el('p',summary(r),card);el('p',r.observaciones,card);el('p','Nueva fecha: pendiente de reagendar',card);
  const edit=el('button','Reagendar',card);edit.disabled=busy;edit.onclick=()=>openExisting(r);
- const share=el('button','Habilitar horarios / enviar enlace',card);share.disabled=busy;share.onclick=()=>window.openRecoveryLink(r);
+ const share=el('button','Enviar enlace de recuperación',card);share.disabled=busy;share.onclick=()=>window.openRecoveryLink(r);
  }if(!list.children.length)el('p','No hay clases pendientes de nueva fecha.',list);agendaRender();}
  async function load(){const token=++generation;ready=false;status.textContent='Consultando recuperaciones…';try{
    const [a,b,c]=await Promise.all([

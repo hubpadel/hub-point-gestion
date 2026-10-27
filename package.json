@@ -10,7 +10,10 @@
     "test:recuperaciones:browser": "node recuperaciones-asistencia-browser.cjs",
     "test:recuperaciones:concurrency": "node recuperaciones-concurrency.cjs",
     "test:recuperaciones:enlaces": "node --test --test-isolation=none recuperaciones-enlaces.test.cjs",
-    "test:recuperaciones:enlaces:browser": "node recuperaciones-enlaces-browser.cjs"
+    "test:recuperaciones:enlaces:browser": "node recuperaciones-profesor-browser.cjs",
+    "test:recuperaciones:profesor": "node --test --test-isolation=none recuperaciones-profesor.test.cjs",
+    "test:recuperaciones:profesor:browser": "node recuperaciones-profesor-browser.cjs",
+    "test:recuperaciones:profesor:concurrency": "node recuperaciones-profesor-concurrency.cjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.9",

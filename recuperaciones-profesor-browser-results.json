@@ -1,0 +1,15 @@
+{
+  "ok": true,
+  "environment": "Navegador móvil con PostgreSQL embebido y red interceptada; sin producción",
+  "checks": [
+    "un panel de disponibilidad por profesor",
+    "enlace fijo del profesor",
+    "enlace de clase lleva referencia sin datos ingresados",
+    "alumno reserva grupo completo",
+    "sale de pendientes y crea Clase recuperada con nombres",
+    "reserva persiste al recargar",
+    "turno reservado desaparece del enlace y del panel central",
+    "enlace general sólo muestra disponibilidad"
+  ],
+  "errors": []
+}
