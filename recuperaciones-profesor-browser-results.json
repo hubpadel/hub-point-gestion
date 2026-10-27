@@ -2,6 +2,7 @@
   "ok": true,
   "environment": "Navegador móvil con PostgreSQL embebido y red interceptada; sin producción",
   "checks": [
+    "sin sesión muestra instrucción clara y abre acceso del coordinador",
     "un panel de disponibilidad por profesor",
     "enlace fijo del profesor",
     "enlace de clase lleva referencia sin datos ingresados",
