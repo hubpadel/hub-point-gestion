@@ -38,6 +38,7 @@ main{max-width:1320px;margin:20px auto;padding:0 16px} .view{display:none} .view
 <nav>
 <button class="primary" data-view="agenda">Agenda</button>
 <button data-view="alumnos">Alumnos</button>
+<button data-view="historial">Historial alumnos</button>
  <button data-view="jugadores">Jugadores</button> 
 <button data-view="profesores">Profesores</button>
 <button data-view="pagos">Pagos</button>
@@ -65,6 +66,20 @@ main{max-width:1320px;margin:20px auto;padding:0 16px} .view{display:none} .view
 <div class="table-wrap"><table><thead><tr><th>Alumno</th><th>Teléfono</th><th>Estado</th><th>Fecha baja</th><th>Observaciones</th><th>Acciones</th></tr></thead><tbody id="studentsBody"></tbody></table></div>
 </section>
 
+<section id="historial" class="view">
+<h2>Historial de alumnos</h2>
+<div class="toolbar">
+<div style="flex:2;min-width:220px"><label for="historialBuscar">Buscar por nombre y apellido</label><input id="historialBuscar" type="search" placeholder="Escribí el nombre o apellido"></div>
+<div style="flex:2;min-width:220px"><label for="historialAlumno">Alumno</label><select id="historialAlumno"><option value="">Elegí un alumno</option></select></div>
+<div style="flex:1;min-width:150px"><label for="historialDesde">Desde</label><input id="historialDesde" type="date"></div>
+<div style="flex:1;min-width:150px"><label for="historialHasta">Hasta</label><input id="historialHasta" type="date"></div>
+<button id="historialActualizar">Actualizar</button><button id="historialExportar" class="primary">Exportar Excel</button>
+</div>
+<div class="status" id="historialResumen">Seleccioná un alumno para ver su historial.</div>
+<p id="historialInfo" class="muted"></p>
+<h3>Clases y asistencias</h3><div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Hora</th><th>Profesor</th><th>Asistencia</th><th>Pago</th></tr></thead><tbody id="historialClases"></tbody></table></div>
+<h3>Pagos realizados</h3><div class="table-wrap"><table><thead><tr><th>Fecha de pago</th><th>Concepto</th><th>Mes abonado</th><th>Profesor</th><th>Medio</th><th>Importe</th></tr></thead><tbody id="historialPagos"></tbody></table></div>
+</section>
 <section id="jugadores" class="view">
 <div id="playersStatus" class="status" role="status">Cargando jugadores…</div>
 <div class="toolbar"><button id="newPlayerBtn" class="primary">+ Nuevo jugador</button><button id="reloadPlayersBtn">Actualizar jugadores</button></div>
@@ -324,7 +339,7 @@ function renderAgenda(){
   }).join('');
 }
 function renderStudents(){
-  $('#studentsBody').innerHTML=students.length?students.map(s=>`<tr><td><b>${s.nombre}</b></td><td>${s.telefono||''}</td><td>${s.activo!==false?'<span class="badge good">Activo</span>':'<span class="badge warn">Baja</span>'}</td><td>${s.fecha_baja||''}</td><td>${s.observaciones||''}</td><td><button onclick="editStudent('${s.id}')">Editar</button> ${s.activo!==false?`<button onclick="cancelStudent('${s.id}')">Dar de baja</button>`:`<button onclick="reactivateStudent('${s.id}')">Dar de alta</button>`}</td></tr>`).join(''):'<tr><td colspan="6">No hay alumnos.</td></tr>';
+  $('#studentsBody').innerHTML=students.length?students.map(s=>`<tr><td><b>${s.nombre}</b></td><td>${s.telefono||''}</td><td>${s.activo!==false?'<span class="badge good">Activo</span>':'<span class="badge warn">Baja</span>'}</td><td>${s.fecha_baja||''}</td><td>${s.observaciones||''}</td><td><button onclick="pointOpenStudentHistory('${s.id}')">Historial</button> <button onclick="editStudent('${s.id}')">Editar</button> ${s.activo!==false?`<button onclick="cancelStudent('${s.id}')">Dar de baja</button>`:`<button onclick="reactivateStudent('${s.id}')">Dar de alta</button>`}</td></tr>`).join(''):'<tr><td colspan="6">No hay alumnos.</td></tr>';
 }
 // JUGADORES: errores independientes de los demás módulos.
 async function loadPlayers(){
@@ -875,6 +890,6 @@ if($('#financeMonth'))$('#financeMonth').addEventListener('change',()=>renderOpe
 </script>
 <script src="corporativos-core.js"></script>
 <script src="corporativos.js?v=20261015-agenda"></script>
-<link rel="stylesheet" href="planner.css?v=20261019-visual2"><script src="planner.js?v=20261026-asistencia"></script><link rel="stylesheet" href="recuperaciones.css?v=20261026-profesor"><script src="recuperaciones.js?v=20261026-profesor"></script><script src="recuperaciones-enlaces.js?v=20261027-acceso"></script></body></html>
+<link rel="stylesheet" href="planner.css?v=20261019-visual2"><script src="planner.js?v=20261026-asistencia"></script><link rel="stylesheet" href="recuperaciones.css?v=20261026-profesor"><script src="recuperaciones.js?v=20261026-profesor"></script><script src="recuperaciones-enlaces.js?v=20261027-acceso"></script><script src="historial-alumnos.js?v=20261028"></script></body></html>
 
 
