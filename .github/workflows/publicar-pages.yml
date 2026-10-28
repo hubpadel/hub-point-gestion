@@ -1,0 +1,35 @@
+name: Publicar HUB Point en GitHub Pages
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Obtener archivos
+        uses: actions/checkout@v4
+      - name: Configurar Pages
+        uses: actions/configure-pages@v5
+      - name: Preparar archivos del sitio
+        run: |
+          mkdir -p _site
+          find . -maxdepth 1 -type f \( -name '*.html' -o -name '*.js' -o -name '*.css' -o -name '*.png' -o -name '*.jpg' -o -name '*.svg' -o -name '*.ico' -o -name '*.json' \) -exec cp {} _site/ \;
+          touch _site/.nojekyll
+      - name: Subir sitio
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+      - name: Publicar Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
