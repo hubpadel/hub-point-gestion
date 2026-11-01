@@ -27,3 +27,16 @@ Las prioridades de los bloques son reglas explícitas y las específicas son edi
 `node --test hub-action.test.cjs hub-action-db.test.cjs`
 
 Incluye orden de prioridades, límites de turnos, codificación WhatsApp, oportunidades, generación estable, PostgreSQL, historial, edición con versiones, duplicados y permisos. La migración debe aplicarse y verificarse en producción antes de considerar operativo el módulo.
+
+
+## Asistente comercial guiado · 1 de noviembre de 2026
+
+El panel principal recalcula recomendaciones al abrir el programa, al entrar a Action, al recuperar el foco y cada 60 segundos mientras la página está visible y no hay un formulario abierto. No es un servicio en segundo plano ni una integración con WhatsApp o Wona. El contador del botón muestra recomendaciones disponibles para la fecha seleccionada.
+
+Cada recomendación incluye persona, motivo, mensaje y cuatro pasos. Al empezar se prepara una tarea compartida con esas instrucciones; no se contacta automáticamente a nadie. Los contactos con tareas abiertas o cerradas en los últimos siete días se excluyen. Se unen las fichas de alumno y jugador por vínculo, teléfono o nombre normalizado y se respetan las bajas.
+
+Reglas: continuidad/retorno según clases; interés en canchas abiertas de los próximos siete días con cupo registrado, categoría simple y modalidad coincidentes, excluyendo inscriptos por nombre; relevamiento de preferencias en lotes rotativos de hasta cinco contactos. Las categorías combinadas, mixtas o suma no se asignan automáticamente. Las invitaciones consultan interés, nunca garantizan cancha ni cupo. Sin teléfono no se propone contacto.
+
+Botones de resultado preparan Enviado, Interesada (seguimiento al próximo día hábil) o Cerrada, para que la recepcionista anote la respuesta y confirme Guardar. No se infiere que un mensaje haya sido enviado. Horarios, interés y nivel contestados deben copiarse en notas; la categoría se actualiza desde Jugadores. El formato de una actividad nueva y sus precios los define Administración/profesor; las recepcionistas reciben los pasos para reunir interesados y cerrar una reserva ya verificada.
+
+Validación: 12 pruebas de lógica y persistencia, incluidas exclusión por contacto reciente, fichas unidas, bajas, cambios de agenda, cupos, categorías ambiguas y rotación de consultas.
