@@ -1,0 +1,68 @@
+/* Identidad visual POINT. Sólo presentación; no cambia datos ni operaciones. */
+:root{--bg:#f0f3f8;--card:#fff;--text:#192536;--muted:#617086;--line:#dfe6ef;--primary:#006bb3;--good:#167448;--bad:#b42335;--warn:#965000;--point-blue:#006bb3;--point-lime:#d6e51e;--point-ink:#141c28;--shadow:0 8px 28px #172a4310}
+body{font-family:"Segoe UI Variable","Segoe UI",Arial,sans-serif;line-height:1.5;background:var(--bg);-webkit-font-smoothing:antialiased}
+body>header{background:var(--point-ink);border:0;border-top:4px solid var(--point-lime);padding:22px 28px 20px;box-shadow:0 8px 24px #101b2a20}
+.head{max-width:1440px;gap:20px;align-items:center}
+.brand{display:grid;grid-template-columns:76px 1fr;column-gap:18px;align-items:center}
+.brand .point-logo{width:76px;height:76px;object-fit:contain;border-radius:50%;grid-column:1;grid-row:1/3;background:#fff;box-shadow:0 0 0 3px #ffffff18}
+.brand b{font-size:25px;line-height:1.2;font-weight:800;letter-spacing:-.7px;color:#fff;grid-column:2;align-self:end}
+.brand span{color:#b8c6d8;font-size:13px;letter-spacing:.2px;grid-column:2;align-self:start;margin-top:6px}
+header nav{flex-basis:100%;display:flex;flex-wrap:wrap;gap:8px;padding-top:17px;border-top:1px solid #ffffff17}
+header nav button{--nav:#2563a6;--nav-bg:#eaf2ff;background:var(--nav-bg);color:var(--nav);border:1px solid transparent;border-radius:11px;font-size:13px;font-weight:750;min-height:42px;padding:10px 14px;box-shadow:none;display:inline-flex;gap:8px;align-items:center;justify-content:center;white-space:nowrap}
+header nav button::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0;opacity:.75}
+header nav button[data-view=agenda]{--nav:#d6e51e;--nav-bg:#293521;color:#e4ef88}
+header nav button[data-view=alumnos],header nav button[data-view=historial]{--nav:#244e9b;--nav-bg:#eaf0ff}
+header nav button[data-view=jugadores]{--nav:#09624f;--nav-bg:#dff5ee}
+header nav button[data-view=profesores]{--nav:#63409c;--nav-bg:#f0e8ff}
+header nav button[data-view=pagos],header nav button[data-view=finanzas]{--nav:#146138;--nav-bg:#e3f5e6}
+header nav button[data-view=reportes]{--nav:#39516b;--nav-bg:#e8eef5}
+header nav button[data-view=corporativos]{--nav:#75419c;--nav-bg:#f4e8ff}
+header nav button[data-view=planner]{--nav:#075a87;--nav-bg:#def2ff}
+header nav button[data-view=recuperaciones]{--nav:#85420f;--nav-bg:#fff0db}
+header nav button[data-view=hubAction]{--nav:#a13922;--nav-bg:#ffe8df}
+header nav button[data-view=torneos]{--nav:#a24d08;--nav-bg:#fff0d7}
+header nav button.primary{background:var(--nav);color:#fff;border-color:var(--nav);box-shadow:0 0 0 2px #ffffff35}
+header nav button[data-view=agenda].primary{background:var(--point-lime);border-color:var(--point-lime);color:#202900}
+header nav button:hover{filter:brightness(1.07);transform:translateY(-1px)}
+main{max-width:1440px;margin:26px auto;padding:0 28px 40px}
+main>.status{border:1px solid #cce9d9;background:#eaf8f0;color:#206345;border-radius:12px;font-size:13px;padding:12px 16px;margin-bottom:24px}
+main>.status::before{content:"";display:inline-block;width:7px;height:7px;margin-right:9px;border-radius:50%;background:#2b9965;box-shadow:0 0 0 4px #2b996511}
+main>.status.bad{background:#fff0f1;color:#a72337;border-color:#f1c5ce}
+main>.status.bad::before{background:#b42335;box-shadow:none}
+.view{--accent:#006bb3}.view#alumnos,.view#historial{--accent:#355bb3}.view#jugadores{--accent:#147660}.view#profesores{--accent:#7445a7}.view#pagos,.view#finanzas{--accent:#167448}.view#corporativos{--accent:#824b9f}.view#hubAction{--accent:#ad4b33}.view#recuperaciones{--accent:#a05b10}.view#torneos{--accent:#b65c13}
+.view>h2{font-size:28px;font-weight:800;letter-spacing:-.8px;line-height:1.25;margin:4px 0 12px;display:flex;gap:12px;align-items:center}
+.view>h2::before{content:"";height:25px;width:5px;border-radius:4px;background:var(--accent);flex-shrink:0}
+.view>p{color:var(--muted);font-size:14px;margin:8px 0 22px}
+h3{font-size:19px;letter-spacing:-.35px;font-weight:750}h4{font-weight:750}p{overflow-wrap:anywhere}
+button{min-height:40px;padding:10px 15px;border-radius:10px;border-color:#d5deea;color:#344256;font-size:13px;font-weight:700;line-height:1.3;transition:background-color .15s,box-shadow .15s,transform .15s}
+button:hover{background:#f3f7fc;border-color:#aebfd4;box-shadow:0 3px 9px #172a4310}
+button.primary{background:var(--accent,var(--primary));border-color:var(--accent,var(--primary));color:#fff;box-shadow:0 3px 8px #006bb31b}
+button.primary:hover{filter:brightness(.94)}button.danger{background:#fff3f4;color:#a72035;border-color:#f0c9d0}
+button:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+button:focus-visible,a:focus-visible{outline:3px solid #006bb3;outline-offset:3px}
+input,select,textarea{border-color:#d9e2ed;border-radius:9px;background:#fbfcfe;color:var(--text);font-size:14px;min-height:42px;padding:10px 12px;max-width:100%}
+input:focus,select:focus,textarea:focus{outline:3px solid #006bb31a;border-color:#006bb3;background:#fff}
+label{font-size:12px;color:#48576b;font-weight:750;margin-bottom:6px;letter-spacing:.1px}
+input[type=checkbox],input[type=radio]{accent-color:var(--accent,var(--primary));min-height:0}
+.toolbar{gap:10px;align-items:center;margin-bottom:20px}.toolbar>input,.toolbar>select{width:auto;min-width:0}
+#agenda>.toolbar{padding:18px;background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);gap:9px}
+#agenda>.toolbar>button{min-height:42px}#agendaDate{font-weight:700;background:#f3f7fc;border-color:#ccd9e8}
+#prevDay,#nextDay,#todayBtn{background:#eef3fa;color:#2c4b71;border-color:#dce5f0}
+#newSingleBtn{background:#006bb3;color:#fff;border-color:#006bb3}#newFixedBtn{background:#eee9ff;color:#6944a0;border-color:#e2d9fa}#newOpenCourtBtn{background:#e5f6ee;color:#12724e;border-color:#c9e9dc}
+#agenda>.toolbar>button:last-child:not(#newOpenCourtBtn){background:#fff0d7;color:#9c4a08;border-color:#f1dbb5}
+main .card,.table-wrap,.slot,.kpi{background:#fff;border:1px solid var(--line);border-radius:15px;box-shadow:var(--shadow)}
+main .card{padding:20px}.table-wrap{margin-top:14px;box-shadow:0 3px 18px #172a4308}
+table{font-size:14px}th{background:#f4f7fb;color:#596a81;font-size:11px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;padding:14px 16px;border-bottom:1px solid #dfe7f1}
+td{padding:14px 16px;border-color:#edf1f6;font-size:13px}tbody tr:hover{background:#f8fbff}tbody tr:last-child td{border-bottom:0}td button{padding:7px 11px;min-height:34px;font-size:12px}
+.slot{padding:16px 18px;margin-bottom:10px;align-items:center;gap:16px;border-left:3px solid #d9e3ee}
+.slot .time{font-size:20px;color:#213c5a;letter-spacing:-.5px;font-variant-numeric:tabular-nums}.slot .muted{margin-top:3px}.slot>button{background:#eef5ff;border-color:#d9e6f5;color:#006bb3}
+.badge{font-size:11px;padding:5px 9px;border-radius:7px;font-weight:750}.muted{color:var(--muted);font-size:12px}.good{background:#e2f6e9;color:#146f40}.warn{background:#fff0d5;color:#8b4b05}
+.kpis{gap:14px;margin:18px 0 24px}.kpi{padding:20px;border-top:3px solid var(--accent,var(--primary))}.kpi span{color:#65758a;font-size:12px;font-weight:700}.kpi b{font-size:28px;letter-spacing:-.8px;margin-top:8px;color:#1b334e}
+.modal{background:#101c2b9c;backdrop-filter:blur(4px)}.modal-card{border:1px solid #e2e9f1;border-radius:20px;padding:26px;box-shadow:0 28px 80px #08152638}.modal-head{padding-bottom:16px;margin-bottom:20px;border-bottom:1px solid var(--line)}.modal-head h3{margin:0;font-size:23px}
+body dialog{border-color:var(--line)!important;border-radius:18px!important;box-shadow:0 24px 80px #08152640;padding:24px}body dialog::backdrop{background:#101c2b9c!important;backdrop-filter:blur(4px)}body dialog h3{font-size:23px;margin-top:0}fieldset{border-color:var(--line);border-radius:12px}legend{font-weight:750}
+body .planner-day{background:#fff;border-color:var(--line);border-radius:12px;padding:12px}body .planner-day h3{font-size:14px;color:#344b66}body .planner-event{border-radius:10px;min-height:70px}body .planner-lane>h4{color:#6a7b8f;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+body .torneo-pair{background:#f5f9ff;border-color:#006bb3!important}body .torneo-pair>legend{background:#006bb3}body .torneo-pair-header>strong{color:#153c63}body .torneo-player h4{color:#006bb3}body .torneo-pair-card{background:#f3f8ff;border-color:#ccdef2;border-left-color:#006bb3}body .torneo-pair-card h4{color:#006bb3}
+body #hubAction .ha-card{border-radius:15px;box-shadow:var(--shadow)}body #hubAction .ha-kpis span{border-radius:12px;font-weight:700}
+@media(min-width:1100px){header .brand::after{content:"CLUB PÁDEL";grid-column:3;grid-row:1/3;align-self:center;justify-self:end;color:#d6e51e;border:1px solid #d6e51455;border-radius:20px;padding:7px 14px;font-size:11px;font-weight:750;letter-spacing:2px;margin-left:28px}.brand{grid-template-columns:76px 1fr auto;width:100%}}
+@media(max-width:750px){body>header{padding:14px 16px 12px;border-top-width:3px}.head{gap:14px}.brand{grid-template-columns:50px 1fr;column-gap:12px}.brand .point-logo{width:50px;height:50px}.brand b{font-size:18px;letter-spacing:-.4px}.brand span{font-size:11px;margin-top:3px}header nav{flex-wrap:nowrap;overflow-x:auto;max-width:100%;padding-top:12px;padding-bottom:4px;gap:7px;scrollbar-width:thin;scrollbar-color:#576b86 transparent}header nav button{flex-shrink:0;font-size:12px;min-height:38px;padding:9px 12px}header nav button::before{width:5px;height:5px}main{margin:18px auto;padding:0 14px 26px}main>.status{font-size:11px;padding:10px 12px;margin-bottom:16px}.view>h2{font-size:24px}#agenda>.toolbar{padding:12px;gap:8px}#agendaTeacherFilter{flex:1 1 100%;max-width:100%!important}#agendaDate{flex:1;max-width:none!important;width:130px}.slot{padding:14px;gap:12px}.time{font-size:18px}.kpis{gap:10px}.kpi{padding:15px}.kpi b{font-size:24px}.modal-card{padding:18px;border-radius:16px}body dialog{padding:18px}.modal-head h3,body dialog h3{font-size:21px}main .card{padding:16px}}
+@media(prefers-reduced-motion:reduce){button{transition:none}header nav button:hover{transform:none}}
