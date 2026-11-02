@@ -16,5 +16,6 @@
   for(const e of events){const d=e.datos;for(const p of d.parejas)for(const j of p.jugadores){const amount=cents(j.cobrado);if(j.fecha?.slice(0,7)===month&&amount){total+=amount;if(j.medio==='Efectivo')cash+=amount;else transfer+=amount;rows.push({torneo:e.actividad.titulo,pareja:p.id,...j});}if(e.actividad.fecha.slice(0,7)===month&&p.estado!=='Cancelada')pending+=cents(j.importe)-amount;}if(e.actividad.fecha.slice(0,7)===month)cost+=cents(d.costo_cancha)+cents(d.coordinador_importe);}
   return {total,cash,transfer,pending,cost,rows};
  }
- const api={cents,state,pairState,validate,summary};if(typeof module==='object')module.exports=api;else root.PointTorneos=api;
+ const rosterRows=e=>[['Pareja','Jugador/a 1','Jugador/a 2'],...e.datos.parejas.flatMap((p,i)=>p.estado==='Cancelada'?[]:[[i+1,...p.jugadores.map(j=>j.nombre)]])];
+ const api={cents,state,pairState,validate,summary,rosterRows};if(typeof module==='object')module.exports=api;else root.PointTorneos=api;
 })(globalThis);
