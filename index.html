@@ -105,7 +105,7 @@ main{max-width:1320px;margin:20px auto;padding:0 16px} .view{display:none} .view
 <section id="finanzas" class="view">
 <div class="toolbar"><input id="financeMonth" type="month" style="max-width:180px"></div>
 <div class="kpis">
-<div class="kpi"><span>Ingresos · Clases + Corporativos</span><b id="fIncome">Pendiente de consulta</b></div>
+<div class="kpi"><span>Ingresos · Clases + Corporativos + Torneos</span><b id="fIncome">Pendiente de consulta</b></div>
 <div class="kpi"><span>Transferencias</span><b id="fTransfer">$0</b></div>
 <div class="kpi"><span>Efectivo</span><b id="fCash">$0</b></div>
 <div class="kpi"><span>A liquidar profesores</span><b id="fTeacher">$0</b></div>
@@ -490,7 +490,10 @@ function renderFinance(){
   const inc=rows.reduce((s,p)=>s+Number(p.importe||0),0),tr=rows.filter(p=>p.medio_pago==='Transferencia').reduce((s,p)=>s+Number(p.importe||0),0),cash=rows.filter(p=>p.medio_pago==='Efectivo').reduce((s,p)=>s+Number(p.importe||0),0);
   let teacherTotal=0;const data=teachers.map(t=>{const x=settlement(t.id,m);teacherTotal+=x.total;return{t,...x}}).filter(x=>x.inc>0);
   const corp=window.PointCorporativosFinance;
-  $('#fIncome').textContent=corp?.month===m&&corp.status==='ready'?new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',minimumFractionDigits:2,maximumFractionDigits:2}).format(inc+corp.total/100):corp?.month===m&&corp.status==='error'?'Total no disponible':'Pendiente de consulta';$('#fTransfer').textContent=money(tr);$('#fCash').textContent=money(cash);$('#fTeacher').textContent=money(teacherTotal);
+  const tournament=window.PointTorneosFinance;
+  const tournamentReady=tournament?.month===m&&tournament.status==='ready';
+  $('#fIncome').textContent=corp?.month===m&&corp.status==='ready'?new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',minimumFractionDigits:2,maximumFractionDigits:2}).format(inc+corp.total/100+(tournamentReady?tournament.total/100:0)):corp?.month===m&&corp.status==='error'?'Total no disponible':'Pendiente de consulta';$('#fTransfer').textContent=money(tr+(tournamentReady?tournament.transfer/100:0));$('#fCash').textContent=money(cash+(tournamentReady?tournament.cash/100:0));
+  if(tournament&&!tournamentReady)$('#fIncome').textContent=tournament.status==='error'?'Total no disponible':'Pendiente de consulta';$('#fTeacher').textContent=money(teacherTotal);
   $('#settlementBody').innerHTML=data.length?data.map(x=>`<tr><td>${x.t.nombre}</td><td>${money(x.inc)}</td><td>${x.pct}%</td><td><b>${money(x.total)}</b></td></tr>`).join(''):'<tr><td colspan="4">Sin movimientos.</td></tr>';
 }
 
@@ -890,6 +893,6 @@ if($('#financeMonth'))$('#financeMonth').addEventListener('change',()=>renderOpe
 </script>
 <script src="corporativos-core.js"></script>
 <script src="corporativos.js?v=20261015-agenda"></script>
-<link rel="stylesheet" href="planner.css?v=20261019-visual2"><script src="planner.js?v=20261026-asistencia"></script><link rel="stylesheet" href="recuperaciones.css?v=20261026-profesor"><script src="recuperaciones.js?v=20261026-profesor"></script><script src="recuperaciones-enlaces.js?v=20261027-acceso"></script><script src="historial-alumnos.js?v=20261028"></script><link rel="stylesheet" href="hub-action.css?v=20261101-coach2"><script src="hub-action-core.js?v=20261101-coach2"></script><script src="hub-action.js?v=20261101-jornada3"></script></body></html>
+<link rel="stylesheet" href="planner.css?v=20261019-visual2"><script src="planner.js?v=20261101-torneos"></script><link rel="stylesheet" href="recuperaciones.css?v=20261026-profesor"><script src="recuperaciones.js?v=20261026-profesor"></script><script src="recuperaciones-enlaces.js?v=20261027-acceso"></script><script src="historial-alumnos.js?v=20261028"></script><link rel="stylesheet" href="hub-action.css?v=20261101-coach2"><script src="hub-action-core.js?v=20261101-coach2"></script><script src="hub-action.js?v=20261101-jornada3"></script><link rel="stylesheet" href="torneos.css?v=20261102"><script src="torneos-core.js?v=20261102"></script><script src="torneos.js?v=20261102"></script></body></html>
 
 
