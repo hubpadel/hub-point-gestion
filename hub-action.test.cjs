@@ -29,3 +29,22 @@ test('coach rota cinco consultas concretas sin inventar horarios ni precios',()=
  assert.notDeepEqual(ideas.map(x=>x.alumno_id).sort(),C.coach('2026-11-03',s,[]).map(x=>x.alumno_id).sort());
  assert.equal(C.coach('2026-11-02',[{id:'a',nombre:'Sin teléfono'}],[]).length,0);
 });
+test('listas comparten un cliente en varias actividades y categorías sin duplicarlo',()=>{
+ const p={actividades:['Clases','Torneos'],categorias:['7ma','6ta'],dias:['Martes'],modalidad:'Femenino',activo:true};
+ const rows=[{id:'1',contacto:'Ana',telefono:'5491112345678',actualizado:'2026-11-01',intereses:p},{id:'2',contacto:'Ana',telefono:'+54 9 11 1234 5678',alumno_id:'a',actualizado:'2026-11-02',intereses:p}];
+ assert.equal(C.interestedContacts(rows).length,1);assert.equal(C.interestLists(rows).length,4);
+ assert.equal(C.interestLists(rows,{actividad:'Clases',categoria:'7ma',dia:'Martes'}).length,1);assert.equal(C.interestLists(rows,{dia:'Lunes'}).length,0);
+ assert.equal(C.interestLists(rows,{modalidad:'Masculino'}).length,0);
+});
+test('actualizar, pausar o vaciar intereses reemplaza listas viejas; cerrar tarea conserva preferencias',()=>{
+ const first={id:'a',alumno_id:'x',contacto:'Ana',actualizado:'2026-11-01',intereses:{actividades:['Clases'],categorias:['7ma']}};
+ const latest={...first,id:'b',actualizado:'2026-11-02',estado:'Cerrada',intereses:{actividades:['Partidos'],categorias:['6ta']}};
+ assert.match(C.interestLists([first,latest])[0].titulo,/Partidos · 6ta/);assert.equal(C.interestLists([first,{...latest,intereses:{actividades:['Partidos'],activo:false}}]).length,0);
+ assert.equal(C.interestLists([first,{...latest,intereses:{actividades:[]}}]).length,0);
+ assert.match(C.interestLists([first,{...latest,intereses:null}])[0].titulo,/Clases/);
+});
+test('no fusiona homónimos ni inventa categorías; valida rango horario',()=>{
+ const rows=['a','b'].map(id=>({id,contacto:'Ana',alumno_id:id,intereses:{actividades:['Clases']}}));assert.equal(C.interestLists(rows)[0].personas.length,2);assert.match(C.interestLists(rows)[0].titulo,/A confirmar/);
+ assert.throws(()=>C.validateInterests({desde:'20:00',hasta:'19:00'}),/posterior/);
+ assert.deepEqual(C.cleanInterests({actividades:['Inventada','Clases'],categorias:['7ma','7ma']}).actividades,['Clases']);
+});
