@@ -19,6 +19,7 @@
  for(const [k,l,t] of [['titulo','Nombre del torneo','text'],['fecha','Fecha','date'],['inicio','Desde','time'],['fin','Hasta','time'],['tipo','Tipo','select'],['categoria','Categoría','text'],['precio','Precio por jugador','number'],['costo_cancha','Costo de canchas','number'],['coordinador','Coordinador/a','text'],['coordinador_importe','Costo de coordinación','number'],['notas','Observaciones','text']]){f[k]=field(fields,l,t,'',k==='tipo'?['Femenina','Masculina','Mixta']:[]);f[k].required=!['coordinador','notas'].includes(k);}
  const courtset=make('fieldset',undefined,form);make('legend','Canchas',courtset);const courts=[1,2,3].map(c=>{const n=field(courtset,'Cancha '+c,'checkbox');n.value=c;return n;});
  make('p','Cobrado: ingresá cero o el importe completo individual. El precio se aplica a nuevos jugadores. Los importes ya cargados se conservan y pueden editarse individualmente. Cancelar una pareja conserva sus cobros.',form);
+ const emptyRoster=make('p','Podés guardar el torneo sin jugadores e ir agregando las parejas a medida que se inscriban.',form);emptyRoster.className='status';
  const roster=make('div',undefined,form);
  button('+ Agregar pareja',form,()=>addPair());
  const note=make('p','',form);note.setAttribute('role','status');
@@ -28,7 +29,7 @@
  const download=button('Descargar las parejas inscritas',form,()=>downloadPairs(selected?.actividad?.id,note,download));download.className='primary';download.disabled=true;
  let events=[],selected=null,pendingId=null,busy=false,generation=0;
  async function downloadPairs(id,message,control){if(!id)return;control.disabled=true;try{const r=await db.from('torneos').select('*,actividad:planner_actividades(*)').eq('id',id).single();if(r.error)throw r.error;const e=r.data,rows=core.rosterRows(e);if(rows.length===1)throw Error('Todavía no hay parejas inscritas para descargar.');if(!window.XLSX)throw Error('No se pudo cargar Excel. Recargá la página e intentá otra vez.');const sheet=XLSX.utils.aoa_to_sheet([[e.actividad.titulo],['Fecha',e.actividad.fecha],['Tipo',e.datos.tipo,'Categoría',e.datos.categoria],[],...rows]);sheet['!cols']=[{wch:12},{wch:32},{wch:32}];const book=XLSX.utils.book_new();XLSX.utils.book_append_sheet(book,sheet,'Parejas inscritas');XLSX.writeFile(book,'Parejas_'+e.actividad.fecha+'_'+e.actividad.titulo.replace(/[^a-z0-9áéíóúñ_-]+/gi,'_').slice(0,70)+'.xlsx');message.textContent='Descarga preparada: '+(rows.length-1)+' pareja(s) inscrita(s).';}catch(e){message.textContent='No se pudo descargar: '+e.message;}finally{control.disabled=false;}}
- function refreshPairNumbers(){[...roster.children].forEach((box,i)=>{box._legend.textContent='PAREJA '+(i+1);});}
+ function refreshPairNumbers(){emptyRoster.hidden=roster.children.length>0;[...roster.children].forEach((box,i)=>{box._legend.textContent='PAREJA '+(i+1);});}
  function newPlayer(){return {id:crypto.randomUUID(),nombre:'',importe:Number(f.precio.value||0),cobrado:0,medio:'',fecha:'',presencia:'Pendiente'};}
  function addPair(pair){const p=pair||{id:crypto.randomUUID(),estado:'Inscripta',jugadores:[newPlayer(),newPlayer()]};
   const box=make('fieldset',undefined,roster);box.className='torneo-pair';box.dataset.id=p.id;box._fresh=!pair;const legend=make('legend','PAREJA',box);box._legend=legend;
@@ -56,7 +57,7 @@
   if(id){status.textContent='Actualizando torneo…';try{const r=await db.from('torneos').select('*,actividad:planner_actividades(*)').eq('id',id).maybeSingle();if(r.error)throw r.error;selected=r.data;if(!selected){const a=await db.from('planner_actividades').select('*').eq('id',id).eq('tipo','torneos').single();if(a.error)throw a.error;selected={actividad:a.data,revision:null};}}catch(e){status.textContent=e.message;return;}}
   const a=selected?.actividad,d=selected?.datos;heading.textContent=id?'Editar torneo y cobros':'Nuevo torneo';
   const defaults={titulo:'Torneo',fecha:$('#agendaDate').value||localISO(),inicio:'15:00',fin:'18:00',tipo:'Femenina',categoria:'8va',precio:0,costo_cancha:0,coordinador:'',coordinador_importe:0,notas:''};
-  for(const k in f)f[k].value=(['titulo','fecha','inicio','fin'].includes(k)?a?.[k]:d?.[k])??defaults[k];courts.forEach(n=>n.checked=(a?.canchas||[1]).includes(Number(n.value)));roster.replaceChildren();(d?.parejas||[]).forEach(addPair);if(!d)addPair();download.disabled=!d;dialog.showModal();
+  for(const k in f)f[k].value=(['titulo','fecha','inicio','fin'].includes(k)?a?.[k]:d?.[k])??defaults[k];courts.forEach(n=>n.checked=(a?.canchas||[1]).includes(Number(n.value)));roster.replaceChildren();(d?.parejas||[]).forEach(addPair);refreshPairNumbers();download.disabled=!d;dialog.showModal();
  }
  form.onsubmit=async e=>{e.preventDefault();if(busy)return;note.textContent='';try{
   const a={tipo:'torneos',titulo:f.titulo.value.trim(),fecha:f.fecha.value,inicio:f.inicio.value,fin:f.fin.value,canchas:courts.filter(n=>n.checked).map(n=>Number(n.value))};

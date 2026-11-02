@@ -1,0 +1,11 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Prueba local · Crear torneo sin jugadores</title><style>body{font-family:Arial;margin:24px}.view{display:none}.view.active{display:block}input,select{display:block;max-width:100%;padding:8px;box-sizing:border-box}button{padding:10px;margin:4px}.status{padding:12px;background:#e9f5ff}</style><link rel="stylesheet" href="../torneos.css"></head><body>
+<p>PRUEBA LOCAL · Los datos de esta pantalla son temporales y no se envían a Supabase.</p>
+<nav><button data-view="finanzas">Finanzas</button></nav><main><section id="agenda" class="view active"><input id="agendaDate" type="date" value="2026-11-03"><div><button id="newOpenCourtBtn">Cancha abierta</button></div></section><section id="finanzas" class="view"><input id="financeMonth" type="month" value="2026-11"></section></main>
+<script>
+const records=[];let calls=0;
+const localISO=()=> '2026-11-03';const renderFinance=()=>{};
+function switchView(id){document.querySelectorAll('.view').forEach(n=>n.classList.toggle('active',n.id===id));}
+class Query{constructor(table){this.table=table;this.filters=[];}select(){return this;}order(){return this;}eq(k,v){this.filters.push([k,v]);return this;}rows(){return records.filter(r=>this.filters.every(([k,v])=>r[k]===v));}then(resolve,reject){return Promise.resolve({data:this.rows(),error:null}).then(resolve,reject);}single(){return Promise.resolve({data:this.rows()[0],error:null});}maybeSingle(){return this.single();}}
+const db={from:table=>new Query(table),rpc:async(name,args)=>{if(name!=='torneos_guardar')throw Error('RPC inesperado');calls++;let row=records.find(r=>r.id===args.p_id);if(!row){row={id:args.p_id,revision:0};records.push(row);}row.revision++;row.actividad={id:args.p_id,...args.p_actividad};row.datos=args.p_datos;return {data:row.revision,error:null};}};
+const PointCorporativos={readAll:async factory=>{const r=await factory();return r.data;}};
+</script><script src="../torneos-core.js"></script><script src="../torneos.js"></script></body></html>

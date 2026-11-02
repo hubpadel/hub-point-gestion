@@ -30,5 +30,12 @@ test('SQL real: guardado atómico, reintentos, dos ediciones, permisos, conflict
  await assert.rejects(put(id,2,beforeMove,a,d),/cambió/);
  assert.equal((await get()).inicio,'12:00:00');
  await db.exec('reset role;set role authenticated');assert.equal((await db.query('select * from torneos')).rows.length,1);
+ // Primero se crea el torneo vacío; las parejas se agregan en otra edición.
+ const emptyId='20000000-0000-0000-0000-000000000003',emptyActivity={...a,fecha:'2026-11-03'},emptyData={...data(),parejas:[]};
+ await put(emptyId,null,null,emptyActivity,emptyData);
+ assert.equal((await db.query('select jsonb_array_length(datos->\'parejas\') n from torneos where id=$1',[emptyId])).rows[0].n,0);
+ const emptyVersion=(await db.query('select to_jsonb(a) version from planner_actividades a where id=$1',[emptyId])).rows[0].version;
+ await put(emptyId,1,emptyVersion,emptyActivity,data());
+ assert.equal((await db.query('select jsonb_array_length(datos->\'parejas\') n from torneos where id=$1',[emptyId])).rows[0].n,1);
  }finally{await db.close();}
 });
