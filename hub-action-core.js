@@ -98,5 +98,34 @@
   }
   return ideas.sort((a,b)=>a.prioridad-b.prioridad||a.titulo.localeCompare(b.titulo,'es'));
  }
- return {priorities,shift,closed,compare,phone,whatsapp,suggest,validate,dailyPlan,contacts,coach};
+
+ const interestOptions={actividades:['Clases','Partidos','Canchas abiertas','Torneos','Horario fijo','Empresas'],categorias:['Principiante','9na','8va','7ma','6ta','5ta','4ta','3ra','2da','1ra','A confirmar'],dias:['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'],modalidad:['A confirmar','Femenino','Masculino','Mixto']};
+ function cleanInterests(v){
+  if(!v||typeof v!=='object'||Array.isArray(v))return null;
+  const out={};for(const k of ['actividades','categorias','dias'])out[k]=interestOptions[k].filter(x=>Array.isArray(v[k])&&v[k].includes(x));
+  out.modalidad=interestOptions.modalidad.includes(v.modalidad)?v.modalidad:'A confirmar';out.activo=v.activo!==false;
+  for(const k of ['desde','hasta'])out[k]=/^([01]\d|2[0-3]):[0-5]\d$/.test(v[k]||'')?v[k]:'';
+  return out;
+ }
+ function validateInterests(v){const p=cleanInterests(v);if(p?.desde&&p.hasta&&p.desde>=p.hasta)throw Error('El horario hasta debe ser posterior al horario desde.');return p;}
+ function interestedContacts(tasks){
+  // Link snapshots by student ID or phone; names alone never merge distinct clients.
+  const groups=[];
+  const ordered=tasks.slice().sort((a,b)=>String(b.actualizado||b.fecha||'').localeCompare(String(a.actualizado||a.fecha||''))||String(b.id||'').localeCompare(String(a.id||'')));
+  for(const t of ordered){const aliases=[t.alumno_id&&'a:'+t.alumno_id,phone(t.telefono)&&'p:'+phone(t.telefono)].filter(Boolean);if(!aliases.length)aliases.push('t:'+t.id);
+   const matches=groups.filter(g=>aliases.some(x=>g.aliases.has(x)));
+   const g=matches[0]||{aliases:new Set(),rows:[]};if(!matches.length)groups.push(g);
+   for(const other of matches.slice(1)){other.aliases.forEach(x=>g.aliases.add(x));g.rows.push(...other.rows);groups.splice(groups.indexOf(other),1);}
+   aliases.forEach(x=>g.aliases.add(x));g.rows.push(t);
+  }
+  return groups.map(g=>g.rows.sort((a,b)=>ordered.indexOf(a)-ordered.indexOf(b)).find(t=>t.intereses!==null&&t.intereses!==undefined)).filter(Boolean).map(t=>({...t,intereses:cleanInterests(t.intereses)})).filter(t=>t.intereses?.activo&&t.intereses.actividades.length).sort((a,b)=>String(a.contacto).localeCompare(String(b.contacto),'es'));
+ }
+ function interestLists(tasks,filters={}){
+  const groups=new Map();for(const t of interestedContacts(tasks)){const p=t.intereses;if(filters.modalidad&&p.modalidad!==filters.modalidad||filters.dia&&!p.dias.includes(filters.dia))continue;
+   for(const activity of p.actividades){if(filters.actividad&&activity!==filters.actividad)continue;for(const category of p.categorias.length?p.categorias:['A confirmar']){if(filters.categoria&&category!==filters.categoria)continue;
+    const key=activity+' · '+category+' · '+p.modalidad;if(!groups.has(key))groups.set(key,[]);groups.get(key).push(t);
+   }}
+  }return Array.from(groups,([titulo,personas])=>({titulo,personas})).sort((a,b)=>a.titulo.localeCompare(b.titulo,'es'));
+ }
+ return {interestOptions,cleanInterests,validateInterests,interestedContacts,interestLists,priorities,shift,closed,compare,phone,whatsapp,suggest,validate,dailyPlan,contacts,coach};
 });
