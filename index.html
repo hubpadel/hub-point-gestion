@@ -65,6 +65,7 @@ main{max-width:1320px;margin:20px auto;padding:0 16px} .view{display:none} .view
 
 <section id="alumnos" class="view">
 <div class="toolbar"><button id="newStudentBtn" class="primary">+ Nuevo alumno</button></div>
+<div class="toolbar"><div style="flex:2;min-width:180px"><label>Buscar alumno</label><input id="studentSearch" type="search" placeholder="Nombre, apellido o teléfono"></div><div style="flex:1;min-width:140px"><label>Sexo</label><select id="studentSexFilter"><option value="">Todos</option><option value="femenino">Femenino</option><option value="masculino">Masculino</option><option value="__sin__">Sin especificar</option></select></div><div style="flex:1;min-width:140px"><label>Categoría</label><select id="studentCategoryFilter"><option value="">Todas</option></select></div><div style="flex:1;min-width:140px"><label>Profesor</label><select id="studentTeacherFilter"><option value="">Todos</option></select></div><div style="flex:1;min-width:135px"><label>Estado</label><select id="studentStatusFilter"><option value="">Todos</option><option value="activo">Activo</option><option value="baja">Baja</option></select></div><button id="clearStudentFilters">Limpiar</button></div><p id="studentsCount" class="muted" role="status"></p>
 <div class="table-wrap"><table><thead><tr><th>Alumno</th><th>Teléfono</th><th>Estado</th><th>Fecha baja</th><th>Observaciones</th><th>Acciones</th></tr></thead><tbody id="studentsBody"></tbody></table></div>
 </section>
 
@@ -87,7 +88,7 @@ main{max-width:1320px;margin:20px auto;padding:0 16px} .view{display:none} .view
 <div class="toolbar"><button id="newPlayerBtn" class="primary">+ Nuevo jugador</button><button id="reloadPlayersBtn">Actualizar jugadores</button></div>
 <div class="toolbar">
 <div style="flex:1;min-width:180px"><label for="playerSearch">Buscar jugador</label><input id="playerSearch" type="search" placeholder="Nombre o teléfono"></div>
-<div style="min-width:180px"><label for="playerCategoryFilter">Categoría</label><select id="playerCategoryFilter"><option value="">Todas las categorías</option></select></div>
+<div style="min-width:180px"><label for="playerCategoryFilter">Categoría</label><select id="playerCategoryFilter"><option value="">Todas las categorías</option></select></div><div style="min-width:140px"><label>Sexo</label><select id="playerSexFilter"><option value="">Todos</option><option value="femenino">Femenino</option><option value="masculino">Masculino</option><option value="__sin__">Sin especificar</option></select></div><div style="min-width:150px"><label>Origen</label><select id="playerOriginFilter"><option value="">Todos</option><option value="alumno">Alumno</option><option value="jugador">Independiente</option></select></div><button id="clearPlayerFilters">Limpiar</button>
 </div>
 <p id="playersCount" class="muted" role="status"></p>
 <div id="playersBody"></div>
@@ -340,8 +341,26 @@ function renderAgenda(){
     return `<div class="slot"><div class="time">${time}</div><div>${content}</div><button onclick="openClassAt('${time}')">+ Otra</button></div>`;
   }).join('');
 }
+function filterSex(v){const t=playerText(v);return ['f','femenino','mujer'].includes(t)?'femenino':['m','masculino','hombre','varon'].includes(t)?'masculino':'__sin__'}
+function linkedStudentPlayer(s){return players.find(p=>String(p.alumno_id||'')===String(s.id))||null}
+function refreshStudentFilters(){
+ const cat=$('#studentCategoryFilter'),teach=$('#studentTeacherFilter'),oldCat=cat.value,oldTeach=teach.value;
+ cat.replaceChildren(new Option('Todas las categorías',''));
+ const categories=new Map();students.forEach(s=>{const c=playerCategory(linkedStudentPlayer(s)?.categoria);categories.set(c.key,c)});
+ [...categories.values()].sort((a,b)=>a.label.localeCompare(b.label,'es',{numeric:true})).forEach(c=>cat.add(new Option(c.label,c.key)));
+ if([...cat.options].some(o=>o.value===oldCat))cat.value=oldCat;
+ teach.replaceChildren(new Option('Todos los profesores',''));
+ const ids=new Set(classes.map(c=>String(c.profesor_id)));teachers.filter(t=>ids.has(String(t.id))).forEach(t=>teach.add(new Option(t.nombre,t.id)));
+ if([...teach.options].some(o=>o.value===oldTeach))teach.value=oldTeach;
+}
+function studentVisible(s){
+ const term=playerText($('#studentSearch').value),p=linkedStudentPlayer(s),sex=$('#studentSexFilter').value,cat=$('#studentCategoryFilter').value,teach=$('#studentTeacherFilter').value,status=$('#studentStatusFilter').value;
+ const digits=term.replace(/\D/g,'');
+ return (!term||playerText(s.nombre).includes(term)||playerText(s.telefono).includes(term)||(digits&&String(s.telefono||'').replace(/\D/g,'').includes(digits)))&&(!sex||filterSex(p?.sexo)===sex)&&(!cat||playerCategory(p?.categoria).key===cat)&&(!teach||classes.some(c=>String(c.alumno_id)===String(s.id)&&String(c.profesor_id)===teach))&&(!status||(status==='activo'?s.activo!==false:s.activo===false));
+}
 function renderStudents(){
-  $('#studentsBody').innerHTML=students.length?students.map(s=>`<tr><td><b>${s.nombre}</b></td><td>${s.telefono||''}</td><td>${s.activo!==false?'<span class="badge good">Activo</span>':'<span class="badge warn">Baja</span>'}</td><td>${s.fecha_baja||''}</td><td>${s.observaciones||''}</td><td><button onclick="pointOpenStudentHistory('${s.id}')">Historial</button> <button onclick="editStudent('${s.id}')">Editar</button> ${s.activo!==false?`<button onclick="cancelStudent('${s.id}')">Dar de baja</button>`:`<button onclick="reactivateStudent('${s.id}')">Dar de alta</button>`}</td></tr>`).join(''):'<tr><td colspan="6">No hay alumnos.</td></tr>';
+ refreshStudentFilters();const visible=students.filter(studentVisible);$('#studentsCount').textContent=visible.length+' de '+students.length+' alumnos';
+  $('#studentsBody').innerHTML=visible.length?visible.map(s=>`<tr><td><b>${s.nombre}</b></td><td>${s.telefono||''}</td><td>${s.activo!==false?'<span class="badge good">Activo</span>':'<span class="badge warn">Baja</span>'}</td><td>${s.fecha_baja||''}</td><td>${s.observaciones||''}</td><td><button onclick="pointOpenStudentHistory('${s.id}')">Historial</button> <button onclick="editStudent('${s.id}')">Editar</button> ${s.activo!==false?`<button onclick="cancelStudent('${s.id}')">Dar de baja</button>`:`<button onclick="reactivateStudent('${s.id}')">Dar de alta</button>`}</td></tr>`).join(''):'<tr><td colspan="6">No hay alumnos.</td></tr>';
 }
 // JUGADORES: errores independientes de los demás módulos.
 async function loadPlayers(){
@@ -352,6 +371,7 @@ async function loadPlayers(){
     if(request!==playersRequest)return;
     players=result.data||[];
     renderPlayers();
+    renderStudents();
     $('#playersStatus').textContent=players.length+' jugador'+(players.length===1?'':'es')+' cargado'+(players.length===1?'':'s')+' desde Supabase';
     $('#playersStatus').className='status';
   }catch(e){
@@ -385,11 +405,11 @@ function renderPlayers(){
   renderPlayerGroups();
 }
 function renderPlayerGroups(){
-  const body=$('#playersBody'),search=playerText($('#playerSearch').value),filter=$('#playerCategoryFilter').value;
+  const body=$('#playersBody'),search=playerText($('#playerSearch').value),filter=$('#playerCategoryFilter').value,sex=$('#playerSexFilter').value,origin=$('#playerOriginFilter').value;
   const digits=search.replace(/\D/g,'');
   const visible=players.filter(p=>{
     const matchesText=!search||playerText(p.nombre).includes(search)||playerText(p.telefono).includes(search)||(digits.length>0&&/^[\d\s+().-]+$/.test(search)&&String(p.telefono||'').replace(/\D/g,'').includes(digits));
-    return matchesText&&(!filter||playerCategory(p.categoria).key===filter);
+    return matchesText&&(!filter||playerCategory(p.categoria).key===filter)&&(!sex||filterSex(p.sexo)===sex)&&(!origin||(origin==='alumno'?!!p.alumno_id:!p.alumno_id));
   });
   $('#playersCount').textContent=visible.length+' de '+players.length+' jugadores';
   body.replaceChildren();
@@ -479,7 +499,12 @@ $('#playerForm').onsubmit=savePlayer;
 $('#reloadPlayersBtn').onclick=loadPlayers;
 $('#playerSearch').oninput=renderPlayerGroups;
 $('#playerCategoryFilter').onchange=renderPlayerGroups;
+$('#playerSexFilter').onchange=renderPlayerGroups;
+$('#playerOriginFilter').onchange=renderPlayerGroups;
+$('#clearPlayerFilters').onclick=()=>{['playerSearch','playerCategoryFilter','playerSexFilter','playerOriginFilter'].forEach(id=>$('#'+id).value='');renderPlayerGroups()};
 
+['studentSearch','studentSexFilter','studentCategoryFilter','studentTeacherFilter','studentStatusFilter'].forEach(id=>$('#'+id).addEventListener(id==='studentSearch'?'input':'change',renderStudents));
+$('#clearStudentFilters').onclick=()=>{['studentSearch','studentSexFilter','studentCategoryFilter','studentTeacherFilter','studentStatusFilter'].forEach(id=>$('#'+id).value='');renderStudents()};
 function renderTeachers(){
   $('#teachersBody').innerHTML=teachers.length?teachers.map(t=>`<tr><td><b>${t.nombre}</b></td><td>${t.telefono||''}</td><td>${t.porcentaje_liquidacion||50}%</td><td>${t.activo!==false?'Activo':'Inactivo'}</td><td><button onclick="editTeacher('${t.id}')">Editar</button> <button onclick="mergeTeacher('${t.id}')">Fusionar</button> <button class="danger" onclick="deleteTeacher('${t.id}')">Eliminar</button></td></tr>`).join(''):'<tr><td colspan="5">No hay profesores.</td></tr>';
 }
