@@ -16,7 +16,7 @@
  const dialog=make('dialog',undefined,section);dialog.className='torneo-dialog';
  const form=make('form',undefined,dialog);form.id='partidoForm';const heading=make('h3','Nuevo partido',form);
  const fields=make('div',undefined,form);fields.className='torneo-fields';const f={};
- for(const [k,l,t] of [['titulo','Nombre del partido','text'],['fecha','Fecha','date'],['inicio','Desde','select'],['fin','Hasta','select'],['tipo','Tipo','select'],['categoria','Categoría','text'],['precio','Precio por jugador','number'],['costo_cancha','Costo de canchas','number'],['coordinador','Coordinador/a','text'],['coordinador_importe','Costo de coordinación','number'],['notas','Observaciones','text']]){f[k]=field(fields,l,t,'',k==='tipo'?['Femenina','Masculina','Mixta']:[]);f[k].required=!['coordinador','notas'].includes(k);}
+ for(const [k,l,t] of [['titulo','Nombre del partido','text'],['fecha','Fecha','date'],['inicio','Desde','select'],['fin','Hasta','select'],['tipo','Tipo','select'],['categoria','Categoría','text'],['precio','Precio por jugador','number'],['costo_cancha','Costo de canchas','number'],['coordinador','Coordinador/a','text'],['coordinador_importe','Costo de coordinación','number'],['notas','Observaciones','text'],['armado_por','Armado por','select']]){f[k]=field(fields,l,t,'',k==='tipo'?['Femenina','Masculina','Mixta']:k==='armado_por'?['','Clari','Tamy']:[]);f[k].required=!['coordinador','notas','armado_por'].includes(k);}
  for(const key of ['inicio','fin']){f[key].replaceChildren();for(const t of core.times(key==='fin')){const o=make('option',t.label,f[key]);o.value=t.value;}}
  f.categoria.setAttribute('list','partidoCategorias');const categories=make('datalist',undefined,form);categories.id='partidoCategorias';for(const c of ['9na','8va','7ma','6ta','5ta','4ta','3ra','2da','1ra','Suma 10','Suma 11','Suma 12','Suma 13','Suma 14','Suma 15','Libre']){make('option',c,categories).value=c;}
  const namesList=make('datalist',undefined,form);namesList.id='partidoJugadores';let known=[];async function loadNames(){try{const [players,students]=await Promise.all([PointCorporativos.readAll(()=>db.from('jugadores').select('id,nombre,telefono').order('id')),PointCorporativos.readAll(()=>db.from('alumnos').select('id,nombre,telefono').order('id'))]);known=[...players,...students];namesList.replaceChildren();for(const name of new Set(known.map(x=>x.nombre).filter(Boolean)))make('option',name,namesList).value=name;}catch(e){/* El nombre también puede cargarse manualmente. */}}
@@ -60,13 +60,13 @@
  async function edit(id,preset={}){if(busy)return;note.textContent='';selected=null;pendingId=id||core.uuid();
   if(id){status.textContent='Actualizando partido…';try{const r=await db.from('partidos').select('*,actividad:planner_actividades(*)').eq('id',id).maybeSingle();if(r.error)throw r.error;selected=r.data;if(!selected){const a=await db.from('planner_actividades').select('*').eq('id',id).eq('tipo','partidos').single();if(a.error)throw a.error;selected={actividad:a.data,revision:null};}}catch(e){status.textContent=e.message;return;}}
   const a=selected?.actividad,d=selected?.datos;heading.textContent=id?'Editar partido y cobros':'Nuevo partido';
-  const defaults={titulo:'Partido armado',fecha:$('#agendaDate').value||localISO(),inicio:'08:00',fin:'09:30',tipo:'Femenina',categoria:'8va',precio:0,costo_cancha:0,coordinador:'',coordinador_importe:0,notas:'',...preset};
+  const defaults={titulo:'Partido armado',fecha:$('#agendaDate').value||localISO(),inicio:'08:00',fin:'09:30',tipo:'Femenina',categoria:'8va',precio:0,costo_cancha:0,coordinador:'',coordinador_importe:0,notas:'',armado_por:'',...preset};
   for(const k in f)f[k].value=(['titulo','fecha','inicio','fin'].includes(k)?(['inicio','fin'].includes(k)?a?.[k]?.slice(0,5):a?.[k]):d?.[k])??defaults[k];courts.forEach(n=>n.checked=(a?.canchas||preset.canchas||[1]).includes(Number(n.value)));roster.replaceChildren();(d?.parejas||[]).forEach(addPair);refreshPairNumbers();download.disabled=!d;loadNames();dialog.showModal();
  }
  form.onsubmit=async e=>{e.preventDefault();if(busy)return;note.textContent='';try{
   const a={tipo:'partidos',titulo:f.titulo.value.trim(),fecha:f.fecha.value,inicio:f.inicio.value,fin:f.fin.value,canchas:courts.filter(n=>n.checked).map(n=>Number(n.value))};
   core.schedule(a);
-  const d={};for(const k of ['tipo','categoria','precio','costo_cancha','coordinador','coordinador_importe','notas'])d[k]=f[k].type==='number'?Number(f[k].value):f[k].value.trim();
+  const d={};for(const k of ['tipo','categoria','precio','costo_cancha','coordinador','coordinador_importe','notas','armado_por'])d[k]=f[k].type==='number'?Number(f[k].value):f[k].value.trim();
   d.parejas=[...roster.children].map(box=>({id:box.dataset.id,estado:box._state.value,jugadores:box._players.map(r=>({id:r.id,nombre:r.nombre.value.trim(),telefono:r.telefono.value.trim(),importe:Number(r.importe.value),cobrado:Number(r.cobrado.value),medio:r.medio.value,fecha:r.fecha.value,presencia:r.presencia.value}))}));core.validate(d);
   busy=true;save.disabled=true;close.disabled=true;note.textContent='Guardando partido y agenda…';
   const r=await db.rpc('partidos_guardar',{p_id:pendingId,p_revision:selected?.revision??null,p_version:selected?.actividad??null,p_actividad:a,p_datos:d});if(r.error)throw r.error;
@@ -75,3 +75,4 @@
  dialog.addEventListener('cancel',e=>{if(busy)e.preventDefault();});
  window.PointPartidosUI={open:edit};
 })();
+
