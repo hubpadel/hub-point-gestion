@@ -22,7 +22,7 @@
  el('label','Método',payForm);pay.metodo=el('select',undefined,payForm);for(const m of ['Efectivo','Transferencia','Tarjeta','Otro'])el('option',m,pay.metodo);
  pay.fecha.value=localDate();const confirmPay=el('button','Confirmar pago',payForm);confirmPay.type='submit';confirmPay.disabled=true;
  const finance=el('div',undefined,document.querySelector('#finanzas'));el('h3','Ingresos · Corporativos',finance);const fStatus=el('p','Abrí Finanzas para consultar cobros corporativos.',finance);const fList=el('div',undefined,finance);let financeGeneration=0;
- async function financeLoad(){const generation=++financeGeneration;const month=document.querySelector('#financeMonth').value;if(!month)return;window.PointCorporativosFinance={month,status:'loading'};renderFinance();fStatus.textContent='Consultando ingresos corporativos…';fList.replaceChildren();try{
+ async function financeLoad(){return; /* Resumen exclusivo del panel privado. */const generation=++financeGeneration;const month=document.querySelector('#financeMonth').value;if(!month)return;window.PointCorporativosFinance={month,status:'loading'};renderFinance();fStatus.textContent='Consultando ingresos corporativos…';fList.replaceChildren();try{
   const [y,m]=month.split('-').map(Number);const next=m===12?`${y+1}-01`:`${y}-${String(m+1).padStart(2,'0')}`;
   const rows=await core.readAll(()=>db.from('corporativos_ingresos').select('*').gte('fecha',month+'-01').lt('fecha',next+'-01').order('fecha').order('id'));if(generation!==financeGeneration)return;
   const s=core.summary(rows,month);window.PointCorporativosFinance={month,status:'ready',total:s.total};renderFinance();fStatus.textContent=`Corporativos: ${currency(s.total)} · Efectivo: ${currency(s.cash)} · Transferencia: ${currency(s.transfer)}`;
@@ -74,3 +74,4 @@
  }
  const refreshAgenda=initAgenda();
 })();
+
