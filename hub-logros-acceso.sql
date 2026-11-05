@@ -17,3 +17,22 @@ create policy logros_accesos_sin_acceso_directo on point_logros.accesos for all 
 create policy logros_decisiones_sin_acceso_directo on point_logros.decisiones for all to anon,authenticated using(false) with check(false);
 notify pgrst,'reload schema';
 commit;
+
+-- Mantener el respaldo de medallas cuando recepción reemplaza la nómina.
+create or replace function point_logros.hub_logros_panel(p_desde date,p_hasta date)
+returns jsonb language plpgsql security definer set search_path='' as $function$
+declare candidatos jsonb; logros jsonb;
+begin
+ if not public.hub_logros_es_admin() then raise exception 'Acceso exclusivo de administración' using errcode='42501'; end if;
+ if p_desde is null or p_hasta is null or p_hasta<p_desde or p_hasta-p_desde>366 then raise exception 'Elegí un período de hasta 366 días'; end if;
+ select coalesce(jsonb_agg(to_jsonb(c) order by c.fecha desc,c.cliente),'[]') into candidatos from point_logros.candidatos c where c.fecha between p_desde and p_hasta;
+ select coalesce(jsonb_agg(to_jsonb(d)||jsonb_build_object('vigente',
+ exists(select 1 from point_logros.eventos e where e.fuente=d.fuente and e.fuente_id=d.fuente_id and e.vigente and e.elegible)
+ or (
+ d.fuente='Cancha abierta'
+ and not exists(select 1 from point_logros.eventos e where e.fuente=d.fuente and e.fuente_id=d.fuente_id)
+ and (select count(*) from point_logros.eventos e where e.fuente=d.fuente and e.cliente_clave=d.cliente_clave and e.programa=d.programa and e.fecha=(d.detalle->>'fecha')::date and e.actividad=d.detalle->>'actividad')=1
+ and exists(select 1 from point_logros.eventos e where e.fuente=d.fuente and e.cliente_clave=d.cliente_clave and e.programa=d.programa and e.fecha=(d.detalle->>'fecha')::date and e.actividad=d.detalle->>'actividad' and e.vigente and e.elegible)
+ )) order by d.creado_en desc),'[]') into logros from point_logros.decisiones d where (d.detalle->>'fecha')::date between p_desde and p_hasta;
+ return jsonb_build_object('candidatos',candidatos,'logros',logros);
+end $function$;
