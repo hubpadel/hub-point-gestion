@@ -53,8 +53,8 @@ begin
  into gastos,gastos_predio from jsonb_array_elements(base->'gastos') g where g->>'anulado_en' is null;
  return base||jsonb_build_object('cobros',cobros,'totales_mensuales',case when usa_totales then to_jsonb(mensual) else null end,'ingresos_manuales',manuales,'programas',programas,
  'comision',jsonb_build_object('configurada',configurada,'origen',case when regla_mensual then 'mensual' else 'habitual' end,'porcentaje',10,'rubros',coalesce(to_jsonb(regla.rubros),'[]'),'actualizado_en',regla.actualizado_en,'base',base_hub,'importe',comision),
- 'calculos',jsonb_build_object('ingresos',ingresos,'costos',costos,'gastos',gastos,'gastos_predio',gastos_predio,'otros_gastos',gastos-gastos_predio,
- 'efectivo',total_efectivo,'transferencias',transferencias,'otros_medios',otros,'base_hub',base_hub,'comision_hub',comision,'antes_hub',ingresos-costos-gastos,'resultado',ingresos-costos-gastos-comision));
+ 'calculos',jsonb_build_object('ingresos',ingresos,'costos',costos,'gastos',gastos,'gastos_predio',gastos_predio,'otros_gastos',gastos-gastos_predio,'egresos_inclusivos',usa_totales,'egresos_totales',case when usa_totales then mensual.costo_predio else costos+gastos+comision end,
+ 'efectivo',total_efectivo,'transferencias',transferencias,'otros_medios',otros,'base_hub',base_hub,'comision_hub',comision,'antes_hub',case when usa_totales then ingresos-mensual.costo_predio+comision else ingresos-costos-gastos end,'resultado',case when usa_totales then ingresos-mensual.costo_predio else ingresos-costos-gastos-comision end));
 end $$;
 revoke all on function point_logros.finanzas_resumen_mensual(date) from public,anon,authenticated;
 notify pgrst,'reload schema';
