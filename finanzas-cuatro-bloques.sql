@@ -7,6 +7,17 @@ declare base jsonb;manuales jsonb;cobros jsonb;regla point_logros.finanzas_comis
 begin
  if not point_logros.hub_logros_es_admin() then raise exception 'Acceso exclusivo de administración' using errcode='42501';end if;
  base:=point_logros.finanzas_panel(p_mes);
+ -- Cierre comercial: canchas abiertas por fecha de actividad; conservar fecha real del cobro.
+ base:=jsonb_set(base,'{cobros}',coalesce((
+ select jsonb_agg(x order by x->>'fecha',x->>'referencia') from (
+ select to_jsonb(c)||jsonb_build_object('fecha_cobro',c.fecha) x from point_logros.finanzas_cobros c
+ where c.programa<>'Canchas abiertas' and c.fecha>=(base->>'mes')::date and c.fecha<((base->>'mes')::date+interval '1 month')
+ union all
+ select to_jsonb(c)||jsonb_build_object('fecha',e.fecha,'fecha_cobro',c.fecha,'criterio','Mes de actividad')
+ from point_logros.finanzas_cobros c join public.cancha_abierta_jugadores j on j.id::text=c.referencia join public.canchas_abiertas e on e.id=j.cancha_abierta_id
+ where c.programa='Canchas abiertas' and e.fecha>=(base->>'mes')::date and e.fecha<((base->>'mes')::date+interval '1 month')
+ ) movimientos),'[]'));
+
  -- El costo total del predio se carga aparte: no duplicar el costo de canchas por actividad.
  base:=jsonb_set(base,'{costos}',coalesce((select jsonb_agg(c) from jsonb_array_elements(base->'costos') c where c->>'tipo'<>'Cancha'),'[]'));
 
