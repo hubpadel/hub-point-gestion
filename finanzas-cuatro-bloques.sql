@@ -22,7 +22,8 @@ begin
  base:=jsonb_set(base,'{costos}',coalesce((select jsonb_agg(c) from jsonb_array_elements(base->'costos') c where c->>'tipo'<>'Cancha'),'[]'));
 
  select * into regla from point_logros.finanzas_comision_mes where mes=(base->>'mes')::date;regla_mensual:=found;configurada:=true;
- if not regla_mensual then regla.rubros:=array['Clases','Canchas abiertas','Partidos','Torneos','Corporativos','Abonos de canchas'];end if;
+ if not regla_mensual then regla.rubros:=array['Clases','Canchas abiertas','Partidos','Torneos','Corporativos'];end if;
+ regla.rubros:=array_remove(array_remove(regla.rubros,'Abonos de canchas'),'Alquileres de canchas');
  select coalesce(jsonb_agg(to_jsonb(m) order by m.fecha,m.creado_en),'[]') into manuales
  from point_logros.finanzas_ingresos_manuales m where m.fecha>=(base->>'mes')::date and m.fecha<((base->>'mes')::date+interval '1 month');
  select coalesce(jsonb_agg(jsonb_build_object('programa',m->>'rubro','referencia','Manual '||(m->>'id'),'fecha',m->>'fecha','cliente',m->>'cliente','medio',m->>'medio','importe',(m->>'importe')::numeric,
