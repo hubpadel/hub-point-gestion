@@ -1,0 +1,40 @@
+begin;
+-- Regla indicada por administración: HUB 10% en todos los rubros salvo alquileres de canchas.
+create or replace function point_logros.finanzas_resumen_mensual(p_mes date) returns jsonb
+language plpgsql security invoker set search_path='' set jit=off as $$
+declare base jsonb;manuales jsonb;cobros jsonb;regla point_logros.finanzas_comision_mes;configurada boolean;regla_mensual boolean;
+ programas jsonb;ingresos numeric;costos numeric;gastos numeric;gastos_predio numeric;base_hub numeric;comision numeric;
+ total_efectivo numeric;transferencias numeric;otros numeric;
+begin
+ if not point_logros.hub_logros_es_admin() then raise exception 'Acceso exclusivo de administración' using errcode='42501';end if;
+ base:=point_logros.finanzas_panel(p_mes);
+ select * into regla from point_logros.finanzas_comision_mes where mes=(base->>'mes')::date;regla_mensual:=found;configurada:=true;
+ if not regla_mensual then regla.rubros:=array['Clases','Canchas abiertas','Partidos','Torneos','Corporativos','Abonos de canchas'];end if;
+ select coalesce(jsonb_agg(to_jsonb(m) order by m.fecha,m.creado_en),'[]') into manuales
+ from point_logros.finanzas_ingresos_manuales m where m.fecha>=(base->>'mes')::date and m.fecha<((base->>'mes')::date+interval '1 month');
+ select coalesce(jsonb_agg(jsonb_build_object('programa',m->>'rubro','referencia','Manual '||(m->>'id'),'fecha',m->>'fecha','cliente',m->>'cliente','medio',m->>'medio','importe',(m->>'importe')::numeric,
+ 'concepto',(m->>'concepto')||case when m->>'mes_abonado' is not null then ' · Mes abonado '||left(m->>'mes_abonado',7) else '' end,'fecha_inferida',false)),'[]') into cobros
+ from jsonb_array_elements(manuales) m where m->>'anulado_en' is null;
+ cobros:=(base->'cobros')||cobros;
+ with rubros as(select unnest(array['Clases','Canchas abiertas','Partidos','Torneos','Corporativos','Alquileres de canchas','Abonos de canchas']) rubro),
+ totales as(select r.rubro,coalesce((select sum((c->>'importe')::numeric) from jsonb_array_elements(cobros) c where c->>'programa'=r.rubro),0) cobrado,
+ coalesce((select sum((c->>'importe')::numeric) from jsonb_array_elements(base->'costos') c where c->>'programa'=r.rubro),0) costo,
+ coalesce((select sum((c->>'importe')::numeric) from jsonb_array_elements(cobros) c where c->>'programa'=r.rubro and c->>'medio'='Efectivo'),0) efectivo,
+ coalesce((select sum((c->>'importe')::numeric) from jsonb_array_elements(cobros) c where c->>'programa'=r.rubro and c->>'medio'='Transferencia'),0) transferencia
+ from rubros r),
+ calculados as(select *,case when not configurada then null when rubro=any(regla.rubros) then round(cobrado*0.10,2) else 0 end hub from totales)
+ select jsonb_agg(jsonb_build_object('programa',rubro,'cobrado',cobrado,'costo',costo,'efectivo',efectivo,'transferencia',transferencia,'otros',cobrado-efectivo-transferencia,
+ 'lleva_comision',case when configurada then rubro=any(regla.rubros) else null end,'comision_hub',hub,'margen',cobrado-costo-hub)),
+ sum(cobrado),sum(costo),case when configurada then coalesce(sum(cobrado) filter(where rubro=any(regla.rubros)),0) end,
+ case when configurada then sum(hub) end,sum(efectivo),sum(transferencia),sum(cobrado-efectivo-transferencia)
+ into programas,ingresos,costos,base_hub,comision,total_efectivo,transferencias,otros from calculados;
+ select coalesce(sum((g->>'importe')::numeric),0),coalesce(sum((g->>'importe')::numeric) filter(where g->>'categoria'='Gastos generales del predio'),0)
+ into gastos,gastos_predio from jsonb_array_elements(base->'gastos') g where g->>'anulado_en' is null;
+ return base||jsonb_build_object('cobros',cobros,'ingresos_manuales',manuales,'programas',programas,
+ 'comision',jsonb_build_object('configurada',configurada,'origen',case when regla_mensual then 'mensual' else 'habitual' end,'porcentaje',10,'rubros',coalesce(to_jsonb(regla.rubros),'[]'),'actualizado_en',regla.actualizado_en,'base',base_hub,'importe',comision),
+ 'calculos',jsonb_build_object('ingresos',ingresos,'costos',costos,'gastos',gastos,'gastos_predio',gastos_predio,'otros_gastos',gastos-gastos_predio,
+ 'efectivo',total_efectivo,'transferencias',transferencias,'otros_medios',otros,'base_hub',base_hub,'comision_hub',comision,'antes_hub',ingresos-costos-gastos,'resultado',ingresos-costos-gastos-comision));
+end $$;
+revoke all on function point_logros.finanzas_resumen_mensual(date) from public,anon,authenticated;
+notify pgrst,'reload schema';
+commit;
