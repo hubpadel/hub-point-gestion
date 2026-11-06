@@ -847,7 +847,7 @@ window.addEventListener('focus',()=>{if(!document.querySelector('.modal.open'))r
 if($('#financeMonth'))$('#financeMonth').addEventListener('change',()=>renderOpenCourtFinance());
 </script>
 <script src="corporativos-core.js"></script>
-<script src="corporativos.js?v=20261105-privado"></script>
+<script src="corporativos.js?v=20261106-editar-quitar"></script>
 <link rel="stylesheet" href="planner.css?v=20261019-visual2"><script src="planner.js?v=20261105-partidos"></script><link rel="stylesheet" href="recuperaciones.css?v=20261026-profesor"><script src="recuperaciones.js?v=20261026-profesor"></script><script src="recuperaciones-enlaces.js?v=20261027-acceso"></script><script src="historial-alumnos.js?v=20261028"></script><link rel="stylesheet" href="hub-action.css?v=20261101-coach2"><script src="hub-action-core.js?v=20261102-intereses"></script><script src="hub-action.js?v=20261102-finalizadas"></script><link rel="stylesheet" href="torneos.css?v=20261102-parejas2"><script src="torneos-core.js?v=20261102-parejas2"></script><script src="torneos.js?v=20261105-privado"></script>
 <script>
 (()=>{const nav=document.querySelector('header nav')||document.querySelector('nav');if(!nav||document.getElementById('pointAdminAccess'))return;const button=document.createElement('button');button.id='pointAdminAccess';button.type='button';button.textContent='Administración 🔒';button.addEventListener('click',()=>{window.location.href=new URL('administracion.html',window.location.href).href;});nav.append(button);})();

@@ -16,7 +16,7 @@
  const sw=el('div',undefined,form);el('label','Estado',sw);fields.estado=el('select',undefined,sw);
  for(const name of ['Borrador','Presupuestado','Confirmado','Realizado','Cancelado'])el('option',name,fields.estado);
  const save=el('button','Guardar evento',form);save.type='submit';const reset=el('button','Nuevo evento',section);reset.type='button';
- const list=el('div',undefined,section);let selected=null,events=[],eventPayments=[],loading=false;
+ const archiveLabel=el('label',undefined,section),showArchived=el('input',undefined,archiveLabel);showArchived.type='checkbox';el('span',' Mostrar eventos quitados / cancelados',archiveLabel);const list=el('div',undefined,section);let selected=null,events=[],eventPayments=[],loading=false,mutating=false;showArchived.onchange=()=>render();
  const payForm=el('form',undefined,section);el('h3','Confirmar cobro del evento seleccionado',payForm);const pay={};
  for(const [key,label,type] of [['importe','Importe cobrado','number'],['fecha','Fecha de cobro','date'],['referencia','Referencia / comprobante','text']]){el('label',label,payForm);pay[key]=el('input',undefined,payForm);pay[key].type=type;pay[key].required=key!=='referencia';if(key==='importe'){pay[key].min='0.01';pay[key].step='0.01';}}
  el('label','Método',payForm);pay.metodo=el('select',undefined,payForm);for(const m of ['Efectivo','Transferencia','Tarjeta','Otro'])el('option',m,pay.metodo);
@@ -28,11 +28,13 @@
   const s=core.summary(rows,month);window.PointCorporativosFinance={month,status:'ready',total:s.total};renderFinance();fStatus.textContent=`Corporativos: ${currency(s.total)} · Efectivo: ${currency(s.cash)} · Transferencia: ${currency(s.transfer)}`;
   for(const p of rows)el('p',`${p.fecha} · ${p.empresa} · Evento ${p.evento_id} · ${p.metodo} · ${currency(core.cents(p.importe))} · Pago ${p.id}`,fList);
  }catch(e){if(generation===financeGeneration){window.PointCorporativosFinance={month,status:'error'};renderFinance();fStatus.textContent='No se pudieron consultar ingresos corporativos: '+e.message;}}}
- function render(){list.replaceChildren();for(const ev of events){const card=el('div',undefined,list);card.className='card';const rows=eventPayments.filter(p=>p.evento_id===ev.id);
+ function selectEvent(ev){selected=ev.id;for(const k in fields)fields[k].value=['inicio','fin'].includes(k)?String(ev[k]||'').slice(0,5):(ev[k]??'');save.textContent='Guardar cambios';confirmPay.disabled=ev.estado==='Cancelado';status.textContent='Editando: '+ev.empresa+'. Modificá los datos y tocá Guardar cambios.';form.scrollIntoView({behavior:'smooth',block:'start'});fields.empresa.focus({preventScroll:true});}
+ async function removeOrRestore(ev){if(mutating)return;const restore=ev.estado==='Cancelado',rows=eventPayments.filter(p=>p.evento_id===ev.id);if(!confirm(restore?'¿Recuperar '+ev.empresa+' como borrador?':'¿Quitar el evento '+ev.empresa+'? Se marcará como cancelado y podrás recuperarlo desde Mostrar eventos quitados / cancelados.'+(rows.length?' Los cobros registrados se conservarán; quitarlos del listado no es una devolución.':'')))return;mutating=true;try{const r=await db.from('corporativos_eventos').update({estado:restore?'Borrador':'Cancelado'}).eq('id',ev.id).select('id').single();if(r.error)throw r.error;if(selected===ev.id){form.reset();selected=null;confirmPay.disabled=true;save.textContent='Guardar evento';}await load();await refreshAgenda();status.textContent=restore?'Evento recuperado como borrador.':'Evento quitado. Podés recuperarlo desde Mostrar eventos quitados / cancelados.';}catch(e){status.textContent='No se pudo actualizar el evento: '+e.message;}finally{mutating=false;}}
+ function render(){list.replaceChildren();const visible=events.filter(ev=>showArchived.checked||ev.estado!=='Cancelado');if(!visible.length)el('p','No hay eventos para mostrar.',list);for(const ev of visible){const card=el('div',undefined,list);card.className='card';const rows=eventPayments.filter(p=>p.evento_id===ev.id);
   el('h3',ev.empresa,card);el('p',`${ev.contacto} · ${ev.fecha} ${ev.inicio}–${ev.fin} · Canchas: ${ev.canchas} · ${ev.participantes} participantes · ${ev.estado}`,card);
   el('p','Presupuesto: '+ev.presupuesto,card);el('p',`Presupuestado: ${currency(core.cents(ev.importe))} · Saldo pendiente: ${currency(core.balance(ev.importe,rows))}`,card);
   for(const p of rows)el('p',`Cobro ${p.fecha} · ${p.metodo} · ${currency(core.cents(p.importe))} · ${p.referencia} · ${p.id}`,card);
-  el('button','Seleccionar / editar',card).onclick=()=>{selected=ev.id;for(const k in fields)fields[k].value=ev[k];confirmPay.disabled=ev.estado==='Cancelado';status.textContent='Evento seleccionado: '+ev.empresa;};
+  el('button','Editar',card).onclick=()=>selectEvent(ev);el('button',ev.estado==='Cancelado'?'Recuperar evento':'Quitar evento',card).onclick=()=>removeOrRestore(ev);
   el('button','Ver en Agenda',card).onclick=()=>{const date=document.querySelector('#agendaDate');if(!date)return;date.value=ev.fecha;switchView('agenda');date.dispatchEvent(new Event('change',{bubbles:true}));};
  }}
  async function load(){if(loading)return;loading=true;refresh.disabled=true;status.textContent='Consultando…';try{
@@ -40,10 +42,10 @@
   const newPayments=await core.readAll(()=>db.from('corporativos_pagos').select('*').order('fecha').order('id'));
   events=newEvents;eventPayments=newPayments;render();status.textContent=`${events.length} evento${events.length===1?'':'s'} consultado${events.length===1?'':'s'}.`;
  }catch(e){status.textContent='No se pudo consultar el módulo: '+e.message;}finally{loading=false;refresh.disabled=false;}}
- refresh.onclick=load;reset.onclick=()=>{form.reset();selected=null;confirmPay.disabled=true;status.textContent='Nuevo evento.';};
- form.onsubmit=async e=>{e.preventDefault();save.disabled=true;try{const data={};for(const k in fields)data[k]=fields[k].value.trim();core.cents(data.importe);data.participantes=Number(data.participantes);if(data.fin<=data.inicio)throw Error('La hora final debe ser posterior al inicio.');
-  const r=selected?await db.from('corporativos_eventos').update(data).eq('id',selected).select('id').single():await db.from('corporativos_eventos').insert(data).select('id').single();if(r.error)throw r.error;selected=r.data.id;confirmPay.disabled=data.estado==='Cancelado';await load();await refreshAgenda();
- }catch(err){status.textContent='No se pudo guardar: '+err.message;}finally{save.disabled=false;}};
+ refresh.onclick=load;reset.onclick=()=>{form.reset();selected=null;confirmPay.disabled=true;save.textContent='Guardar evento';status.textContent='Nuevo evento.';};
+ form.onsubmit=async e=>{e.preventDefault();if(mutating)return;mutating=true;save.disabled=true;try{const data={};for(const k in fields)data[k]=fields[k].value.trim();core.cents(data.importe);data.participantes=Number(data.participantes);if(data.fin<=data.inicio)throw Error('La hora final debe ser posterior al inicio.');
+  const r=selected?await db.from('corporativos_eventos').update(data).eq('id',selected).select('id').single():await db.from('corporativos_eventos').insert(data).select('id').single();if(r.error)throw r.error;selected=r.data.id;confirmPay.disabled=data.estado==='Cancelado';await load();await refreshAgenda();save.textContent='Guardar cambios';status.textContent='Evento guardado correctamente.';
+ }catch(err){status.textContent='No se pudo guardar: '+err.message;}finally{mutating=false;save.disabled=false;}};
  payForm.onsubmit=async e=>{e.preventDefault();if(!selected)return;confirmPay.disabled=true;try{
   if(core.cents(pay.importe.value)<=0)throw Error('El importe debe ser positivo.');
   const payload={p_evento:selected,p_importe:pay.importe.value,p_fecha:pay.fecha.value,p_metodo:pay.metodo.value,p_referencia:pay.referencia.value.trim()};
@@ -63,8 +65,8 @@
   el('h3','Eventos Corporativos',host);const reload=el('button','Actualizar eventos',host),message=el('p','Consultando eventos…',host),rowsHost=el('div',undefined,host);message.setAttribute('role','status');let generation=0;
   async function update(){const request=++generation,day=date.value;rowsHost.replaceChildren();if(!day){message.textContent='Seleccioná una fecha para consultar los eventos.';return;}message.textContent='Consultando eventos…';
    try{const rows=await core.readAll(()=>db.from('corporativos_eventos').select('id,empresa,fecha,inicio,fin,canchas,participantes,estado').eq('fecha',day).order('inicio').order('id'));if(request!==generation||day!==date.value)return;
-    message.textContent=rows.length?`${rows.length} evento${rows.length===1?'':'s'} corporativo${rows.length===1?'':'s'} para esta fecha.`:'No hay eventos corporativos para esta fecha.';
-    for(const ev of rows){const card=el('article',undefined,rowsHost);card.style.cssText='padding:10px 0;border-top:1px solid var(--line)';el('strong',`${String(ev.inicio).slice(0,5)}–${String(ev.fin).slice(0,5)} · ${ev.empresa}`,card);el('p',`Canchas: ${ev.canchas} · ${ev.participantes} participantes · Estado: ${ev.estado}`,card);}
+    const activeRows=rows.filter(x=>x.estado!=='Cancelado');message.textContent=activeRows.length?`${activeRows.length} evento${activeRows.length===1?'':'s'} corporativo${activeRows.length===1?'':'s'} para esta fecha.`:'No hay eventos corporativos para esta fecha.';
+    for(const ev of rows.filter(x=>x.estado!=='Cancelado')){const card=el('article',undefined,rowsHost);card.style.cssText='padding:10px 0;border-top:1px solid var(--line)';el('strong',`${String(ev.inicio).slice(0,5)}–${String(ev.fin).slice(0,5)} · ${ev.empresa}`,card);el('p',`Canchas: ${ev.canchas} · ${ev.participantes} participantes · Estado: ${ev.estado}`,card);el('button','Editar / quitar evento',card).onclick=async()=>{switchView('corporativos');await load();const full=events.find(x=>x.id===ev.id);if(full)selectEvent(full);else status.textContent='No se pudo cargar el evento completo. Tocá Actualizar antes de editar.';};}
    }catch(e){if(request===generation)message.textContent='No se pudieron consultar los eventos corporativos: '+e.message;}
   }
   reload.onclick=update;date.addEventListener('change',update);
