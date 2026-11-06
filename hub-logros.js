@@ -3,19 +3,41 @@
  const $=s=>document.querySelector(s),make=(tag,text,parent)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;parent?.append(e);return e;};
  if(!window.supabase){$('#login').onsubmit=e=>e.preventDefault();$('#authStatus').textContent='No se pudo cargar el acceso seguro. Recargá la página.';$('#signup').disabled=true;return;}
  const db=window.supabase.createClient('https://jpzoaskdtgfvvfpdbqox.supabase.co','sb_publishable_yj3PONOs9YIlwYFiqiuV-A_ogIDN-Pr',{auth:{storageKey:'point-logros-personal',storage:window.sessionStorage,persistSession:true,detectSessionInUrl:true}});
- const icons={Oro:'🥇',Plata:'🥈',Bronce:'🥉'};let authorised=false,busy=false,generation=0,data={candidatos:[],logros:[]},selected=null,lastActivity=Date.now();
+ const icons={Oro:'🥇',Plata:'🥈',Bronce:'🥉'};let authorised=false,busy=false,generation=0,loadedPeriod=null,lastLoaded='',loading=false,queued=false,data={candidatos:[],logros:[]},selected=null,lastActivity=Date.now();
  const month=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit'}).format(new Date());$('#month').value=month;
- function clear(){window.PointFinanzas?.clear();generation++;authorised=false;data={candidatos:[],logros:[]};$('#panel').hidden=true;$('#acceso').hidden=false;for(const s of ['#summary','#candidates','#awards','#inactive','#evidence'])$(s).replaceChildren();$('#password').value='';$('#reviewTitle').textContent='';$('#note').value='';$('#status').textContent='';$('#reviewStatus').textContent='';$('#review').close();selected=null;}
+ function clear(){loadedPeriod=null;lastLoaded='';queued=false;window.PointFinanzas?.clear();generation++;authorised=false;data={candidatos:[],logros:[]};$('#panel').hidden=true;$('#acceso').hidden=false;for(const s of ['#summary','#candidates','#awards','#inactive','#evidence'])$(s).replaceChildren();$('#password').value='';$('#reviewTitle').textContent='';$('#note').value='';$('#status').textContent='';$('#reviewStatus').textContent='';$('#review').close();selected=null;}
  async function lock(){clear();await db.auth.signOut({scope:'local'});$('#authStatus').textContent='Sesión privada cerrada. Volvé a ingresar para ver el análisis.';}
  async function access(){const token=++generation;const {data:session}=await db.auth.getSession();if(token!==generation)return;if(!session.session){clear();return;}const result=await db.rpc('hub_logros_es_admin');if(token!==generation)return;if(result.error||!result.data){await lock();$('#authStatus').textContent='Esta cuenta no tiene acceso al panel privado de administración.';return;}authorised=true;window.PointFinanzas?.authorize(db);lastActivity=Date.now();$('#acceso').hidden=true;$('#panel').hidden=false;$('#authStatus').textContent='';await load();}
  async function login(create){if(busy||!$('#login').reportValidity())return;if(create&&$('#password').value.length<12){$('#authStatus').textContent='Para crear tu acceso, elegí una contraseña de al menos 12 caracteres.';return;}busy=true;$('#authStatus').textContent='Verificando acceso…';try{const email=$('#email').value.trim(),password=$('#password').value;const result=create?await db.auth.signUp({email,password,options:{emailRedirectTo:new URL('administracion.html',location.href).href}}):await db.auth.signInWithPassword({email,password});if(result.error)throw result.error;$('#password').value='';if(create&&!result.data.session){$('#authStatus').textContent='Revisá tu correo y confirmá tu cuenta. Luego volvé a esta pantalla e ingresá. Crear una cuenta no concede acceso de administración a otros correos.';return;}await access();}catch(e){$('#authStatus').textContent='No se pudo ingresar: '+e.message;}finally{busy=false;if(authorised)load();}}
  $('#login').onsubmit=e=>{e.preventDefault();login(false);};$('#signup').onclick=()=>login(true);$('#logout').onclick=lock;
  function period(){const value=$('#month').value;if(!/^\d{4}-\d{2}$/.test(value))throw Error('Elegí un mes');const [y,m]=value.split('-').map(Number);return{p_desde:value+'-01',p_hasta:new Date(Date.UTC(y,m,0)).toISOString().slice(0,10)};}
- async function load(){if(!authorised||busy||$('#review').open)return;const token=++generation;$('#status').textContent='Analizando gestiones e inscripciones…';try{const result=await db.rpc('hub_logros_panel',period());if(token!==generation||!authorised)return;if(result.error)throw result.error;data=result.data;render();$('#status').textContent='Actualizado '+new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})+' · Medallas validadas por administración. Revisión automática cada minuto.';}catch(e){if(token!==generation)return;data={candidatos:[],logros:[]};render();$('#status').textContent='No se pudo actualizar el análisis: '+e.message;}}
+ async function load(){
+  if(!authorised||busy||$('#review').open)return;
+  if(loading){queued=true;return;}
+  const requestedMonth=$('#month').value,token=++generation;
+  loading=true;queued=false;
+  if(loadedPeriod!==requestedMonth){for(const id of ['#summary','#candidates','#awards','#inactive'])$(id).replaceChildren();make('p','Cargando logros…',$('#summary'));}
+  $('#status').textContent='Analizando gestiones e inscripciones…';
+  try{
+   const result=await db.rpc('hub_logros_panel',period());
+   if(token!==generation||!authorised)return;
+   if(requestedMonth!==$('#month').value){queued=true;return;}
+   if(result.error)throw result.error;
+   if(!result.data||!Array.isArray(result.data.candidatos)||!Array.isArray(result.data.logros))throw Error('El servidor no devolvió un análisis válido.');
+   data=result.data;loadedPeriod=requestedMonth;lastLoaded=new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});render();
+   $('#status').textContent='Actualizado '+lastLoaded+' · Medallas validadas por administración. Revisión automática cada minuto.';
+  }catch(e){
+   if(token!==generation||!authorised)return;
+   const reason=/timeout/i.test(e.message||'')?'La consulta superó el tiempo de espera.':e.message;
+   if(loadedPeriod===requestedMonth){$('#status').textContent='No se pudo actualizar: '+reason+' Se conserva el último análisis cargado a las '+lastLoaded+'. Tocá Actualizar análisis para reintentar.';}
+   else{for(const id of ['#summary','#candidates','#awards','#inactive'])$(id).replaceChildren();make('p','Resumen no disponible. No se pudieron consultar los logros.',$('#summary'));$('#status').textContent='No se pudo cargar el análisis: '+reason+' Tocá Actualizar análisis para reintentar.';}
+  }finally{loading=false;if(queued&&authorised){queued=false;load();}}
+ }
+
  const visible=t=>!$('#owner').value||!t.empleada||t.empleada===$('#owner').value;
  function details(t,parent){const e=make('p',undefined,parent);e.className='evidence';e.textContent='Cliente: '+t.cliente+'\nActividad: '+t.actividad+'\nPrograma: '+t.programa+'\nFecha: '+t.fecha+'\nRespaldo: '+t.respaldo+'\nReferencia: '+t.fuente+' · '+t.fuente_id+'\nInició la gestión (según registro): '+t.inicio_gestion+'\nResponsable propuesto para el cierre: '+(t.empleada||'A verificar')+'\nResultado de la tarea: '+t.estado_tarea+'\nNotas de recepción: '+(t.notas||'Sin notas')+(t.identidad_por_nombre?'\nAtención: coincidencia por nombre; verificá la identidad.':'');}
  function review(t,annul=false){selected={...t,annul};$('#reviewTitle').textContent=annul?'Anular medalla · '+t.detalle.cliente:'Verificar logro · '+t.cliente;$('#evidence').replaceChildren();details(annul?t.detalle:t,$('#evidence'));$('#credit').value=t.empleada||'';$('#credit').required=!annul;$('#creditWrap').hidden=annul;$('#note').value='';$('#note').required=annul||!!t.tipo_extra&&!t.empleada;$('#approve').textContent=annul?'Confirmar anulación':'Validar y otorgar '+icons[t.medalla]+' '+t.medalla;$('#discard').hidden=annul;$('#reviewStatus').textContent='';$('#review').showModal();}
- function render(){for(const id of ['#summary','#candidates','#awards','#inactive'])$(id).replaceChildren();const approved=data.logros.filter(t=>t.estado==='Aprobado'&&t.vigente);
+ function render(){if(loadedPeriod!==$('#month').value)return;for(const id of ['#summary','#candidates','#awards','#inactive'])$(id).replaceChildren();const approved=data.logros.filter(t=>t.estado==='Aprobado'&&t.vigente);
   for(const name of ['Clari','Tamy']){if($('#owner').value&&$('#owner').value!==name)continue;const own=approved.filter(t=>t.empleada===name),card=make('section',undefined,$('#summary'));card.className='person';const head=make('div',undefined,card);head.className='person-head';make('h3',name,head);make('span',own.length+(own.length===1?' logro':' logros'),head).className='total';const medals=make('div',undefined,card);medals.className='medals';for(const medal of ['Oro','Plata','Bronce']){const part=make('div',undefined,medals);make('b',icons[medal]+' '+own.filter(t=>t.medalla===medal).length,part);make('small',medal,part);}make('p',new Set(own.filter(t=>!t.detalle?.es_partido_armado).map(t=>t.cliente_clave)).size+' clientes incorporados · '+own.filter(t=>t.detalle?.es_partido_armado).length+' partidos armados validados',card);}
   const candidates=data.candidatos.filter(visible);if(!candidates.length)make('p','No hay nuevos logros para verificar en este filtro. Las consultas de interés y los datos sin vínculo suficiente no generan medallas.', $('#candidates'));
   for(const c of candidates){const card=make('article',undefined,$('#candidates'));card.className='record';make('h3',c.programa+' · '+c.cliente,card);if(!c.empleada)make('p','Sin atribuir: elegí Clari o Tamy al validar.',card).className='warning';make('p',icons[c.medalla]+' '+c.tipo_logro+' · '+c.fecha,card);make('p',c.actividad+' · '+c.respaldo,card);if(c.identidad_por_nombre)make('p','Revisar identidad: coincidencia por nombre',card).className='warning';const b=make('button','Ver respaldo y validar atribución',card);b.type='button';b.onclick=()=>review(c);}
@@ -30,5 +52,6 @@
  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&authorised){if(Date.now()-lastActivity>15*60*1000)lock();else load();}});
  db.auth.onAuthStateChange((event)=>{if(event==='SIGNED_OUT')clear();else if(event==='SIGNED_IN'||event==='TOKEN_REFRESHED')setTimeout(access,0);});access();
 })();
+
 
 
