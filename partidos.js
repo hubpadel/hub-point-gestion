@@ -35,6 +35,10 @@
  button('+ Agregar pareja',form,()=>{if([...roster.children].filter(b=>b._state.value==='Inscripta').length>=2){note.textContent='El partido ya tiene dos parejas activas. Podés cancelar una para reemplazarla.';return;}addPair();});
  const note=make('p','',form);note.setAttribute('role','status');
  const save=make('button','Guardar partido',form);save.type='submit';
+ const finalize=make('button','Finalizar partido',form);
+ finalize.type='submit';
+ finalize.className='primary';
+ finalize.hidden=true;
  const close=button('Cerrar',form,()=>dialog.close());
  const downloadHint=make('p','La descarga incluye las parejas inscritas guardadas, sin las canceladas. Guardá los cambios antes de descargar.',form);
  const download=button('Descargar las parejas inscritas',form,()=>downloadPairs(selected?.actividad?.id,note,download));download.className='primary';download.disabled=true;
@@ -102,17 +106,18 @@
   if(id){status.textContent='Actualizando partido…';try{const r=await db.from('partidos').select('*,actividad:planner_actividades(*)').eq('id',id).maybeSingle();if(r.error)throw r.error;selected=r.data;if(!selected){const a=await db.from('planner_actividades').select('*').eq('id',id).eq('tipo','partidos').single();if(a.error)throw a.error;selected={actividad:a.data,revision:null};}}catch(e){status.textContent=e.message;return;}}
   const a=selected?.actividad,d=selected?.datos;heading.textContent=selected?.archivado_en?'Partido archivado':selected?.finalizado_en?'Partido finalizado':id?'Editar partido y cobros':'Nuevo partido';
   const defaults={titulo:'Partido armado',fecha:$('#agendaDate').value||localISO(),inicio:'08:00',fin:'09:30',tipo:'Femenina',categoria:'8va',precio:0,costo_cancha:0,coordinador:'',coordinador_importe:0,notas:'',armado_por:'',...preset};
-  for(const k in f)f[k].value=(['titulo','fecha','inicio','fin'].includes(k)?(['inicio','fin'].includes(k)?a?.[k]?.slice(0,5):a?.[k]):d?.[k])??defaults[k];courts.forEach(n=>n.checked=(a?.canchas||preset.canchas||[1]).includes(Number(n.value)));roster.replaceChildren();(d?.parejas||[]).forEach(addPair);refreshPairNumbers();for(const control of form.elements){if(control!==close&&control!==download)control.disabled=!!(selected?.finalizado_en||selected?.archivado_en);}save.hidden=!!(selected?.finalizado_en||selected?.archivado_en);download.disabled=!d;loadNames();dialog.showModal();
+  for(const k in f)f[k].value=(['titulo','fecha','inicio','fin'].includes(k)?(['inicio','fin'].includes(k)?a?.[k]?.slice(0,5):a?.[k]):d?.[k])??defaults[k];courts.forEach(n=>n.checked=(a?.canchas||preset.canchas||[1]).includes(Number(n.value)));roster.replaceChildren();(d?.parejas||[]).forEach(addPair);refreshPairNumbers();for(const control of form.elements){if(control!==close&&control!==download)control.disabled=!!(selected?.finalizado_en||selected?.archivado_en);}save.hidden=!!(selected?.finalizado_en||selected?.archivado_en);finalize.hidden=!d||save.hidden;download.disabled=!d;loadNames();dialog.showModal();
  }
- form.onsubmit=async e=>{e.preventDefault();if(busy||selected?.finalizado_en||selected?.archivado_en)return;note.textContent='';try{
+ form.onsubmit=async e=>{e.preventDefault();if(busy||selected?.finalizado_en||selected?.archivado_en)return;const finish=e.submitter===finalize;note.textContent='';try{
   const a={tipo:'partidos',titulo:f.titulo.value.trim(),fecha:f.fecha.value,inicio:f.inicio.value,fin:f.fin.value,canchas:courts.filter(n=>n.checked).map(n=>Number(n.value))};
   core.schedule(a);
   const d={};for(const k of ['tipo','categoria','precio','costo_cancha','coordinador','coordinador_importe','notas','armado_por'])d[k]=f[k].type==='number'?Number(f[k].value):f[k].value.trim();
   d.parejas=[...roster.children].map(box=>({id:box.dataset.id,estado:box._state.value,jugadores:box._players.map(r=>({id:r.id,nombre:r.nombre.value.trim(),telefono:r.telefono.value.trim(),importe:Number(r.importe.value),cobrado:Number(r.cobrado.value),medio:r.medio.value,fecha:r.fecha.value,presencia:r.presencia.value}))}));core.validate(d);
-  busy=true;save.disabled=true;close.disabled=true;note.textContent='Guardando partido y agenda…';
-  const r=await db.rpc('partidos_guardar',{p_id:pendingId,p_revision:selected?.revision??null,p_version:selected?.actividad??null,p_actividad:a,p_datos:d});if(r.error)throw r.error;
-  dialog.close();$('#agendaDate').value=a.fecha;$('#agendaDate').dispatchEvent(new Event('change'));window.dispatchEvent(new Event('point:partidos'));await load();
- }catch(err){note.textContent='No se confirmó el guardado: '+err.message+' Si el partido cambió, cerrá y volvé a abrirlo.';}finally{busy=false;save.disabled=false;close.disabled=false;}};
+  busy=true;save.disabled=true;finalize.disabled=true;close.disabled=true;
+  note.textContent=finish?'Guardando cobros y finalizando partido…':'Guardando partido y agenda…';
+  const r=await db.rpc(finish?'partidos_guardar_y_finalizar':'partidos_guardar',{p_id:pendingId,p_revision:selected?.revision??null,p_version:selected?.actividad??null,p_actividad:a,p_datos:d});if(r.error)throw r.error;
+  dialog.close();if(finish){history.open=true;switchView('partidos');}$('#agendaDate').value=a.fecha;$('#agendaDate').dispatchEvent(new Event('change'));window.dispatchEvent(new Event('point:partidos'));await load();
+ }catch(err){note.textContent=(finish?'No se pudo finalizar: ':'No se confirmó el guardado: ')+err.message;}finally{busy=false;save.disabled=false;finalize.disabled=false;close.disabled=false;}};
  dialog.addEventListener('cancel',e=>{if(busy)e.preventDefault();});
  window.PointPartidosUI={open:edit};
 })();
