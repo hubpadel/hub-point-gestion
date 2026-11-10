@@ -10,7 +10,15 @@
  make('p','Partidos de dos parejas · femenina, masculina o mixta · todas las categorías.',section);
  const toolbar=make('div',undefined,section);toolbar.className='toolbar';
  button('+ Nuevo partido',toolbar,()=>edit());button('Actualizar',toolbar,()=>load());
- const status=make('p','',section);status.setAttribute('role','status');const list=make('div',undefined,section);
+ const status=make('p','',section);status.setAttribute('role','status');
+ make('h3','Partidos pendientes',section);
+ const list=make('div',undefined,section);
+ const history=make('details',undefined,section);
+ const historyTitle=make('summary','Partidos jugados',history);
+ const played=make('div',undefined,history);
+ const archive=make('details',undefined,section);
+ const archiveTitle=make('summary','Partidos archivados',archive);
+ const archivedList=make('div',undefined,archive);
  const nav=button('PARTIDOS',$('nav'),()=>{switchView('partidos');load();});nav.dataset.view='partidos';nav.style.background='#d1f2ee';nav.style.color='#075e55';
  button('+ PARTIDOS',$('#newOpenCourtBtn').parentElement,()=>{switchView('partidos');edit();});
  const dialog=make('dialog',undefined,section);dialog.className='torneo-dialog';
@@ -52,18 +60,51 @@
  }
  f.precio.addEventListener('input',()=>{for(const box of roster.children)if(box._fresh)for(const r of box._players)if(!r.importe.dataset.manual&&Number(r.cobrado.value)===0){r.importe.value=f.precio.value;box.dispatchEvent(new Event('input'));}});
  async function fetchEvents(){const data=await PointCorporativos.readAll(()=>db.from('partidos').select('*,actividad:planner_actividades(*)').order('id'));return data;}
- async function load(){const token=++generation;status.textContent='Consultando partidos…';try{const data=await fetchEvents();if(token!==generation)return;events=data;list.replaceChildren();for(const e of events.sort((a,b)=>b.actividad.fecha.localeCompare(a.actividad.fecha))){const card=make('div',undefined,list);card.className='card';make('h3',e.actividad.titulo,card);make('p',`${e.actividad.fecha} · ${e.actividad.inicio.slice(0,5)}–${e.actividad.fin.slice(0,5)==='24:00'?'00:00':e.actividad.fin.slice(0,5)} · Canchas ${e.actividad.canchas.join(', ')} · ${e.datos.tipo} ${e.datos.categoria}`,card);make('p',`${e.datos.parejas.filter(p=>p.estado!=='Cancelada').length} parejas · ${money(core.cents(e.datos.precio))} por jugador`,card);
+ async function load(){const token=++generation;status.textContent='Consultando partidos…';try{const data=await fetchEvents();if(token!==generation)return;events=data.filter(e=>e.actividad);list.replaceChildren();played.replaceChildren();archivedList.replaceChildren();
+   const archived=events.filter(e=>e.archivado_en).length;
+   archiveTitle.textContent='Partidos archivados ('+archived+')';
+   if(!archived)make('p','No hay partidos archivados.',archivedList);
+   const finalized=events.filter(e=>e.finalizado_en).length;
+   historyTitle.textContent='Partidos jugados ('+finalized+')';
+   if(events.length===finalized+archived)make('p','No hay partidos pendientes.',list);
+   if(!finalized)make('p','Todavía no hay partidos finalizados.',played);
+   for(const e of events.sort((a,b)=>b.actividad.fecha.localeCompare(a.actividad.fecha))){
+    const card=make('div',undefined,e.archivado_en?archivedList:e.finalizado_en?played:list);card.className='card';make('h3',e.actividad.titulo,card);if(e.finalizado_en)make('span','Finalizado',card).className='badge good';else if(e.archivado_en)make('span','Archivado',card).className='badge';make('p',`${e.actividad.fecha} · ${e.actividad.inicio.slice(0,5)}–${e.actividad.fin.slice(0,5)==='24:00'?'00:00':e.actividad.fin.slice(0,5)} · Canchas ${e.actividad.canchas.join(', ')} · ${e.datos.tipo} ${e.datos.categoria}`,card);make('p',`${e.datos.parejas.filter(p=>p.estado!=='Cancelada').length} parejas · ${money(core.cents(e.datos.precio))} por jugador`,card);
     for(const [index,p] of e.datos.parejas.entries()){const pairCard=make('div',undefined,card);pairCard.className='torneo-pair-card';make('h4','PAREJA '+(index+1),pairCard);make('strong',p.jugadores.map(j=>j.nombre).join(' + '),pairCard).className='torneo-pair-names';make('p','Estado de la pareja: '+core.pairState(p),pairCard);for(const j of p.jugadores)make('p',`${j.nombre} · Pago individual: ${core.state(j)} · Asistencia: ${j.presencia}`,pairCard);}
-    button('Ver / editar y registrar pagos',card,()=>edit(e.id));button('Ver en Agenda',card,()=>{$('#agendaDate').value=e.actividad.fecha;switchView('agenda');$('#agendaDate').dispatchEvent(new Event('change'));});const footer=make('div',undefined,card);footer.className='torneo-download';const dl=button('Descargar las parejas inscritas',footer,()=>downloadPairs(e.id,status,dl));}
-   status.textContent=events.length?`${events.length} partido(s).`:'Todavía no hay partidos.';
+    button(e.finalizado_en||e.archivado_en?'Ver partido':'Ver / editar y registrar pagos',card,()=>edit(e.id));
+    if(!e.archivado_en)button(e.finalizado_en?'Reabrir partido':'Finalizar partido',card,()=>closeMatch(e));
+    if(!e.finalizado_en)button(e.archivado_en?'Recuperar partido':'Quitar de pendientes',card,()=>archiveMatch(e));button('Ver en Agenda',card,()=>{$('#agendaDate').value=e.actividad.fecha;switchView('agenda');$('#agendaDate').dispatchEvent(new Event('change'));});const footer=make('div',undefined,card);footer.className='torneo-download';const dl=button('Descargar las parejas inscritas',footer,()=>downloadPairs(e.id,status,dl));}
+   status.textContent=`${events.length-finalized-archived} pendiente(s) · ${finalized} finalizado(s) · ${archived} archivado(s).`;
   }catch(e){status.textContent='No se pudieron consultar los partidos: '+e.message;}}
+ async function archiveMatch(event){
+  if(busy)return;
+  busy=true;
+  try{
+   const r=await db.rpc('actividades_archivar',{p_tipo:'partidos',p_id:event.id,p_archivar:!event.archivado_en});
+   if(r.error)throw r.error;
+   await load();
+  }catch(e){status.textContent=e.message;}
+  finally{busy=false;}
+ }
+ async function closeMatch(event){
+  if(busy)return;
+  busy=true;
+  try{
+   const r=await db.rpc('partidos_cerrar',{p_id:event.id,p_revision:event.revision,p_finalizar:!event.finalizado_en});
+   if(r.error)throw r.error;
+   if(!event.finalizado_en)history.open=true;
+   await load();
+   window.dispatchEvent(new Event('point:partidos'));
+  }catch(e){status.textContent=e.message;}
+  finally{busy=false;}
+ }
  async function edit(id,preset={}){if(busy)return;note.textContent='';selected=null;pendingId=id||core.uuid();
   if(id){status.textContent='Actualizando partido…';try{const r=await db.from('partidos').select('*,actividad:planner_actividades(*)').eq('id',id).maybeSingle();if(r.error)throw r.error;selected=r.data;if(!selected){const a=await db.from('planner_actividades').select('*').eq('id',id).eq('tipo','partidos').single();if(a.error)throw a.error;selected={actividad:a.data,revision:null};}}catch(e){status.textContent=e.message;return;}}
-  const a=selected?.actividad,d=selected?.datos;heading.textContent=id?'Editar partido y cobros':'Nuevo partido';
+  const a=selected?.actividad,d=selected?.datos;heading.textContent=selected?.archivado_en?'Partido archivado':selected?.finalizado_en?'Partido finalizado':id?'Editar partido y cobros':'Nuevo partido';
   const defaults={titulo:'Partido armado',fecha:$('#agendaDate').value||localISO(),inicio:'08:00',fin:'09:30',tipo:'Femenina',categoria:'8va',precio:0,costo_cancha:0,coordinador:'',coordinador_importe:0,notas:'',armado_por:'',...preset};
-  for(const k in f)f[k].value=(['titulo','fecha','inicio','fin'].includes(k)?(['inicio','fin'].includes(k)?a?.[k]?.slice(0,5):a?.[k]):d?.[k])??defaults[k];courts.forEach(n=>n.checked=(a?.canchas||preset.canchas||[1]).includes(Number(n.value)));roster.replaceChildren();(d?.parejas||[]).forEach(addPair);refreshPairNumbers();download.disabled=!d;loadNames();dialog.showModal();
+  for(const k in f)f[k].value=(['titulo','fecha','inicio','fin'].includes(k)?(['inicio','fin'].includes(k)?a?.[k]?.slice(0,5):a?.[k]):d?.[k])??defaults[k];courts.forEach(n=>n.checked=(a?.canchas||preset.canchas||[1]).includes(Number(n.value)));roster.replaceChildren();(d?.parejas||[]).forEach(addPair);refreshPairNumbers();for(const control of form.elements){if(control!==close&&control!==download)control.disabled=!!(selected?.finalizado_en||selected?.archivado_en);}save.hidden=!!(selected?.finalizado_en||selected?.archivado_en);download.disabled=!d;loadNames();dialog.showModal();
  }
- form.onsubmit=async e=>{e.preventDefault();if(busy)return;note.textContent='';try{
+ form.onsubmit=async e=>{e.preventDefault();if(busy||selected?.finalizado_en||selected?.archivado_en)return;note.textContent='';try{
   const a={tipo:'partidos',titulo:f.titulo.value.trim(),fecha:f.fecha.value,inicio:f.inicio.value,fin:f.fin.value,canchas:courts.filter(n=>n.checked).map(n=>Number(n.value))};
   core.schedule(a);
   const d={};for(const k of ['tipo','categoria','precio','costo_cancha','coordinador','coordinador_importe','notas','armado_por'])d[k]=f[k].type==='number'?Number(f[k].value):f[k].value.trim();
