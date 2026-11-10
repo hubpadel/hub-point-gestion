@@ -19,21 +19,42 @@
   return result.sort((a,b)=>a.prioridad-b.prioridad||a.nombre.localeCompare(b.nombre,'es'));
  }
  function validate(t){if(!t.titulo?.trim()||!/^\d{4}-\d{2}-\d{2}$/.test(t.fecha)||!['Clari','Tamy'].includes(t.responsable))throw Error('Completá título, fecha y responsable.');const h=t.hora||'';if(!/^\d{2}:\d{2}$/.test(h)||(t.responsable==='Clari'?(h<'08:00'||h>='16:00'):(h<'16:00'||h>='22:00')))throw Error('La tarea debe quedar dentro del turno de '+t.responsable+'.');if(t.seguimiento&&!Number.isFinite(Date.parse(t.seguimiento)))throw Error('Fecha de seguimiento inválida.');return t;}
+ function mondayOf(date){
+  const day=new Date(date+'T12:00:00Z').getUTCDay();
+  return shift(date,-((day+6)%7));
+ }
+ function weeklySocialTask(date){
+  if(date<'2026-11-16'||mondayOf(date)!==date)return null;
+  return {
+   fecha:date,hora:'09:00',responsable:'Clari',prioridad:2,tipo:'Tarea',estado:'Pendiente',
+   titulo:'Armar la agenda de la semana para redes',
+   motivo:'Revisar clases, partidos, canchas abiertas y torneos confirmados. Preparar la agenda de lunes a domingo con horarios, categorías y cupos verificados, y dejarla lista para compartir en redes.',
+   contacto:'',telefono:'',oferta:'',mensaje:'',notas:'',reserva:'',seguimiento:null,
+   origen:'semanal:agenda-redes:'+date,alumno_id:null
+  };
+ }
+ function clariOpenSales(tasks,date){
+  return tasks.filter(t=>{
+   const openedBy=t.historial?.[0]?.responsable||t.responsable;
+   const hasOpportunity=t.contacto||t.alumno_id||t.telefono||t.oferta||t.tipo==='Propuesta';
+   return openedBy==='Clari'&&t.fecha<=date&&!closed(t)&&hasOpportunity;
+  }).sort(compare);
+ }
  function dailyPlan(date){return [
  ['Clari','08:00',1,'Revisar ocupación de las 3 canchas','Verificar Wona y Planner. Registrar espacios reales de hoy y próximos días con horario, cancha y condiciones. No inferir disponibilidad de las clases solamente.'],
  ['Clari','08:30',1,'Resolver partidos y espacios de hoy','Priorizar partidos incompletos y cancelaciones. Crear una tarea por contacto con propuesta verificada. Registrar nivel y disponibilidad antes de invitar.'],
- ['Clari','09:30',2,'Retomar oportunidades detectadas','Revisar cancelaciones y alumnos sin próxima clase en Oportunidades detectadas. Preparar tareas personalizadas, comprobando contactos recientes.'],
+ ['Clari','09:30',1,'Recuperar clientes inactivos','Revisar alumnos y jugadores sin actividad reciente. Consultar qué les gustaría retomar y ofrecer una clase, partido o cancha abierta con horario y cupo verificados. Registrar respuesta y próximo paso.'],
  ['Clari','11:00',2,'Cerrar respuestas de la mañana','Revisar mensajes efectivamente enviados, registrar respuestas y concretar reservas en la agenda. Agendar seguimiento de interesados.'],
- ['Clari','12:00',4,'Crear una propuesta nueva','Elegir una franja disponible y usar Crear cosas nuevas. Reunir interesados por nivel y disponibilidad; verificar profesor o coordinador y condiciones aprobadas.'],
+ ['Clari','12:00',2,'Generar ventas y reservas','Revisar cupos y horarios disponibles. Ofrecer opciones concretas a clientes inactivos e interesados, y confirmar las reservas aceptadas en Agenda. Dejar las oportunidades abiertas con el próximo paso para Tamy.'],
  ['Clari','14:00',3,'Trabajar reservas de próximos días','Revisar cupos reales de actividades y contactar candidatos compatibles. No repetir contactos con acciones abiertas.'],
  ['Clari','15:30',2,'Preparar pase a Tamy','Actualizar resultado, notas y próximo seguimiento en cada tarea. Reasignar a Tamy lo que deba continuar desde las 16.'],
- ['Tamy','16:00',1,'Retomar pase de Clari y resolver hoy','Leer pendientes y última acción antes de contactar. Priorizar los lugares de esta tarde y noche.'],
+ ['Tamy','16:00',1,'Cerrar oportunidades abiertas por Clari','Abrir el bloque Para retomar de Clari. Revisar qué ofreció, la última respuesta y el próximo paso. Verificar disponibilidad, retomar la conversación y confirmar la reserva si el cliente acepta.'],
  ['Tamy','17:00',4,'Proponer la próxima visita','Conversar con quienes están en el club. Ofrecer su próxima reserva; registrar preferencias si todavía no confirman.'],
  ['Tamy','18:00',2,'Seguir interesados con respuesta pendiente','Revisar seguimientos acordados y actualizar resultados. No volver a contactar sin revisar el historial.'],
  ['Tamy','19:00',3,'Completar mañana y próximos días','Invitar a cupos y horarios verificados. Usar mensajes preparados con nivel y condiciones reales.'],
  ['Tamy','20:00',4,'Desarrollar la propuesta nueva','Continuar la convocatoria iniciada por Clari o preparar una propuesta con las herramientas. Registrar interesados y qué falta para realizarla.'],
  ['Tamy','21:30',2,'Cerrar turno y dejar próximos pasos','Registrar reservas conseguidas y referencias. Dejar notas y seguimiento para Clari, cambiando fecha y hora al turno correspondiente.']
- ].map(([responsable,hora,prioridad,titulo,motivo])=>({fecha:date,hora,responsable,prioridad,titulo,motivo,tipo:'Tarea',estado:'Pendiente',contacto:'',telefono:'',oferta:'',mensaje:'',notas:'',reserva:'',seguimiento:null,origen:'jornada:'+date+':'+responsable+':'+hora,alumno_id:null}));}
+ ].map(([responsable,hora,prioridad,titulo,motivo])=>({fecha:date,hora,responsable,prioridad,titulo,motivo,tipo:'Tarea',estado:'Pendiente',contacto:'',telefono:'',oferta:'',mensaje:'',notas:'',reserva:'',seguimiento:null,origen:'jornada:'+date+':'+responsable+':'+hora,alumno_id:null})).concat(weeklySocialTask(date)||[]);}
  const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
  function contacts(students,players){
   const rows=students.filter(s=>s.activo!==false).map(s=>({...s,alumno_id:s.id}));
@@ -127,5 +148,5 @@
    }}
   }return Array.from(groups,([titulo,personas])=>({titulo,personas})).sort((a,b)=>a.titulo.localeCompare(b.titulo,'es'));
  }
- return {interestOptions,cleanInterests,validateInterests,interestedContacts,interestLists,priorities,shift,closed,compare,phone,whatsapp,suggest,validate,dailyPlan,contacts,coach};
+ return {interestOptions,cleanInterests,validateInterests,interestedContacts,interestLists,priorities,shift,closed,compare,phone,whatsapp,suggest,validate,dailyPlan,mondayOf,weeklySocialTask,clariOpenSales,contacts,coach};
 });
