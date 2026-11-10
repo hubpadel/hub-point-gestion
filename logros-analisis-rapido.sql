@@ -29,8 +29,8 @@ begin
    'tarea_id',t.id,'empleada',t.responsable,'contacto_tarea',coalesce(t.contacto,''),'notas',coalesce(t.notas,''),
    'estado_tarea',case when t.id is null then 'Incorporación con asistencia registrada' else t.estado end,
    'inicio_gestion',case when t.id is null then 'Sin tarea vinculada · atribución por administración' else coalesce(t.historial->0->>'responsable',t.responsable) end,
-   'medalla',case when e.ultima is null then 'Oro' when e.ultima<e.fecha-90 then 'Plata' else 'Bronce' end,
-   'tipo_logro',case when e.ultima is null then 'Nuevo cliente según historial disponible' when e.ultima<e.fecha-90 then 'Cliente recuperado · más de 90 días' else 'Nueva actividad para cliente activo' end,
+   'medalla',case when e.ultima is null then 'Oro' when e.ultima<=e.fecha-30 then 'Plata' else 'Bronce' end,
+   'tipo_logro',case when e.ultima is null then 'Nuevo cliente según historial disponible' when e.ultima<=e.fecha-30 then 'Cliente recuperado · 30 días o más' else 'Nueva actividad para cliente activo' end,
    'tipo_extra',t.id is null,'es_partido_armado',false) dato
   from inscripciones e
   left join lateral(select x.* from tareas x where x.cliente_clave=e.cliente_clave
@@ -38,7 +38,7 @@ begin
     and (e.inscripcion is null or e.inscripcion>=coalesce(point_logros.fecha_segura(x.historial->0->>'fecha'),x.fecha::timestamptz))
     order by (x.estado='Confirmada') desc,x.fecha desc,x.actualizado desc,x.id limit 1
   ) t on true
-  where not e.repite and(t.id is not null or e.fuente='Clase')
+  where (not e.repite or e.ultima<=e.fecha-30) and(t.id is not null or e.fuente='Clase')
  ),
  partidos as materialized(
   select jsonb_build_object('fuente','Partido armado','fuente_id',t.id::text,'cliente_clave','partido:'||t.id::text,
