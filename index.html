@@ -85,7 +85,7 @@ main{max-width:1320px;margin:20px auto;padding:0 16px} .view{display:none} .view
 </section>
 <section id="jugadores" class="view">
 <div id="playersStatus" class="status" role="status">Cargando jugadores…</div>
-<div class="toolbar"><button id="newPlayerBtn" class="primary">+ Nuevo jugador</button><button id="reloadPlayersBtn">Actualizar jugadores</button></div>
+<div class="toolbar"><button id="newPlayerBtn" class="primary">+ Nuevo jugador</button><button id="reloadPlayersBtn">Actualizar jugadores</button><button id="exportPlayersBtn">Descargar Excel</button></div>
 <div class="toolbar">
 <div style="flex:1;min-width:180px"><label for="playerSearch">Buscar jugador</label><input id="playerSearch" type="search" placeholder="Nombre o teléfono"></div>
 <div style="min-width:180px"><label for="playerCategoryFilter">Categoría</label><select id="playerCategoryFilter"><option value="">Todas las categorías</option></select></div><div style="min-width:140px"><label>Sexo</label><select id="playerSexFilter"><option value="">Todos</option><option value="femenino">Femenino</option><option value="masculino">Masculino</option><option value="__sin__">Sin especificar</option></select></div><div style="min-width:150px"><label>Origen</label><select id="playerOriginFilter"><option value="">Todos</option><option value="alumno">Alumno</option><option value="jugador">Independiente</option></select></div><button id="clearPlayerFilters">Limpiar</button>
@@ -376,10 +376,10 @@ function renderStudents(){
 async function loadPlayers(){
   const request=++playersRequest;
   try{
-    const result=await db.from('jugadores').select('id,nombre,telefono,sexo,categoria,alumno_id').order('nombre');
-    if(result.error)throw result.error;
+    const rows=await PointCorporativos.readAll(()=>db.from('jugadores')
+      .select('id,nombre,telefono,sexo,categoria,alumno_id').order('nombre').order('id'));
     if(request!==playersRequest)return;
-    players=result.data||[];
+    players=rows;
     renderPlayers();
     renderStudents();
     $('#playersStatus').textContent=players.length+' jugador'+(players.length===1?'':'es')+' cargado'+(players.length===1?'':'s')+' desde Supabase';
@@ -414,13 +414,17 @@ function renderPlayers(){
   if([...select.options].some(o=>o.value===selected))select.value=selected;
   renderPlayerGroups();
 }
-function renderPlayerGroups(){
-  const body=$('#playersBody'),search=playerText($('#playerSearch').value),filter=$('#playerCategoryFilter').value,sex=$('#playerSexFilter').value,origin=$('#playerOriginFilter').value;
+function filteredPlayers(){
+  const search=playerText($('#playerSearch').value),filter=$('#playerCategoryFilter').value,sex=$('#playerSexFilter').value,origin=$('#playerOriginFilter').value;
   const digits=search.replace(/\D/g,'');
-  const visible=players.filter(p=>{
+  return players.filter(p=>{
     const matchesText=!search||playerText(p.nombre).includes(search)||playerText(p.telefono).includes(search)||(digits.length>0&&/^[\d\s+().-]+$/.test(search)&&String(p.telefono||'').replace(/\D/g,'').includes(digits));
     return matchesText&&(!filter||playerCategory(p.categoria).key===filter)&&(!sex||filterSex(p.sexo)===sex)&&(!origin||(origin==='alumno'?!!p.alumno_id:!p.alumno_id));
   });
+}
+
+function renderPlayerGroups(){
+  const body=$('#playersBody'),visible=filteredPlayers();
   $('#playersCount').textContent=visible.length+' de '+players.length+' jugadores';
   body.replaceChildren();
   if(!visible.length){
@@ -507,6 +511,25 @@ async function savePlayer(event){
 }
 $('#playerForm').onsubmit=savePlayer;
 $('#reloadPlayersBtn').onclick=loadPlayers;
+$('#exportPlayersBtn').onclick=()=>{
+  const rows=filteredPlayers().slice().sort((a,b)=>String(a.nombre||'').localeCompare(String(b.nombre||''),'es'));
+  if(!rows.length)return alert('No hay jugadores para descargar con estos filtros.');
+  if(!window.XLSX)return alert('No se pudo cargar Excel. Recargá e intentá otra vez.');
+  const data=rows.map(player=>({
+    Nombre:player.nombre||'',
+    'Teléfono':String(player.telefono||''),
+    Sexo:player.sexo||'',
+    'Categoría':playerCategory(player.categoria).label,
+    Origen:player.alumno_id?'Alumno':'Jugador'
+  }));
+  const sheet=XLSX.utils.json_to_sheet(data);
+  sheet['!cols']=[{wch:34},{wch:21},{wch:16},{wch:21},{wch:14}];
+  sheet['!autofilter']={ref:sheet['!ref']};
+  const book=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(book,sheet,'Jugadores');
+  XLSX.writeFile(book,'Cartera_Jugadores_Point_'+localISO()+'.xlsx');
+};
+
 $('#playerSearch').oninput=renderPlayerGroups;
 $('#playerCategoryFilter').onchange=renderPlayerGroups;
 $('#playerSexFilter').onchange=renderPlayerGroups;
