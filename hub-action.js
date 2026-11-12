@@ -16,6 +16,9 @@
  const capacityPanel=make('section',undefined,left);
  make('h3','Prioridad 1 · Completar la agenda',capacityPanel);
  const capacityList=make('div',undefined,capacityPanel);
+ const teacherGapPanel=make('details',undefined,left);
+ make('summary','Huecos entre clases de profesores',teacherGapPanel);
+ const teacherGapList=make('div',undefined,teacherGapPanel);
  const proposalButtons=[];
  const clariHandoff=make('section',undefined,left);
  make('h3','Para retomar de Clari · Tamy',clariHandoff);
@@ -74,9 +77,10 @@
  function card(t,parent){const a=make('article',undefined,parent);a.className='ha-card';a.style.setProperty('--ha-color',t.estado==='Confirmada'?'#15803d':t.estado==='Cerrada'?'#667085':C.priorities[t.prioridad][1]);make('b',`P${t.prioridad} · ${t.hora} · ${t.responsable} · ${t.estado==='Cerrada'?'Finalizada':t.estado==='Confirmada'?'Reserva confirmada':t.estado}`,a);make('h4',t.titulo,a);if(t.contacto)make('p',t.contacto,a);make('p',t.motivo||'',a).className='ha-meta';if(t.oferta)make('p',t.oferta,a);if(t.tipo==='Recuperación')make('b','Recuperación · sin duplicar ingresos ni liquidación',a).style.color='#7e22ce';if(t.seguimiento)make('p','Seguimiento: '+t.seguimiento.replace('T',' '),a);if(t.notas)make('p','Pase: '+t.notas,a);if(t.reserva)make('p','Reserva: '+t.reserva,a);const text=msg(t);if(text)make('p',text,a).className='ha-message';const actions=make('div',undefined,a);actions.className='ha-actions';const unresolved=/\{[^}]+\}/.test(text)||(/\{oferta\}/.test(t.mensaje||'')&&!t.oferta);const link=!C.closed(t)&&text&&!unresolved&&C.whatsapp(t.telefono,text);if(link){const w=make('a','Abrir WhatsApp con mensaje',actions);w.href=link;w.target='_blank';w.rel='noopener noreferrer';}else if(!C.closed(t)&&(t.contacto||t.mensaje))make('span',unresolved?'Completá la propuesta antes de abrir WhatsApp.':'Completá teléfono internacional y mensaje para contactar.',actions);make('button','Registrar resultado / editar',actions).onclick=()=>open(t);if(t.contacto)make('button','Registrar qué le interesa',actions).onclick=()=>openInterest(t);if(!C.closed(t)&&!t.contacto&&!t.mensaje)make('button','Marcar realizada',actions).onclick=()=>open({...t,estado:'Cerrada'});if(!C.closed(t)&&(t.contacto||t.mensaje)){for(const [label,state]of [['Ya envié','Enviado'],['Le interesa','Interesada'],['No le interesa / cerrar','Cerrada']])make('button',label,actions).onclick=()=>{open({...t,estado:state});if(state==='Interesada'){let next=C.shift(localISO(),1);while([0,6].includes(new Date(next+'T12:00:00Z').getUTCDay()))next=C.shift(next,1);fields.seguimiento.value=next+'T09:30';}note.textContent='Anotá la respuesta y guardá. Si no le interesa, dejá el motivo para el próximo turno.';};}const history=make('details',undefined,a);make('summary','Historial de acciones',history);for(const h of t.historial||[])make('p',`${h.fecha} · ${h.responsable} · ${h.estado} · ${h.notas||''}`,history);}
  function renderCapacity() {
   capacityList.replaceChildren();
-  const activities=ready ? C.scheduledCapacity(date.value,loadedClasses,loadedEvents,loadedParticipants,loadedMatches,loadedTournaments,capacityTargets) : [];
+  const activities=ready ? C.scheduledCapacity(date.value,loadedEvents,loadedParticipants,loadedMatches,loadedTournaments,capacityTargets) : [];
   const pending=activities.filter(a=>a.missing!==0);
   for(const button of proposalButtons)button.disabled=!ready||loading||pending.length>0;
+  teacherGapPanel.hidden=!ready;
   if(!ready)return activities;
   const complete=activities.length-pending.length;
   const today=pending.filter(a=>a.day===date.value).length;
@@ -91,8 +95,6 @@
     const agendaDate=document.querySelector('#agendaDate');
     agendaDate.value=a.day;switchView('agenda');agendaDate.dispatchEvent(new Event('change'));
    };
-   const names=a.studentIds?.map(id=>loadedStudents.find(student=>student.id===id)?.nombre).filter(Boolean);
-   if(names?.length)make('p',names.join(', '),row);
    if(a.missing>0)make('button','Preparar seguimiento de cupo',row).onclick=()=>open({
     titulo:'Completar cupo · '+a.title,prioridad:a.day===date.value?1:3,tipo:'Propuesta',
     oferta:a.title+' · '+a.day+' '+a.time,
@@ -103,6 +105,20 @@
    const input=make('input',undefined,label);input.type='number';input.min='1';input.step='1';input.value=a.target??'';
    const saveGoal=make('button','Guardar meta',row);
    saveGoal.onclick=()=>saveCapacityTarget(a,input.valueAsNumber,saveGoal);
+  }
+  teacherGapList.replaceChildren();
+  make('p','Huecos de una hora o más entre clases del mismo profesor. Verificá disponibilidad del profesor y cancha en Wona antes de ofrecerlos.',teacherGapList);
+  const gaps=C.teacherGaps(date.value,loadedClasses);
+  if(!gaps.length)make('p','No hay huecos entre clases en las fechas revisadas.',teacherGapList);
+  for(const gap of gaps){
+   const teacher=tName(gap.teacherId);
+   const row=make('article',undefined,teacherGapList);row.className='ha-card';
+   make('b',`${gap.day} · ${gap.start}–${gap.end} · ${teacher==='—'?'Profesor/a':teacher}`,row);
+   const prepare=make('button','Preparar propuesta de clase',row);
+   prepare.disabled=loading||pending.length>0;
+   prepare.onclick=()=>open({titulo:'Ofrecer clase · '+teacher,tipo:'Propuesta',
+    oferta:`${gap.day} · ${gap.start}–${gap.end} · ${teacher}`,
+    motivo:'Confirmá con el profesor y verificá cancha en Wona. Luego ofrecé una clase a un cliente compatible.'});
   }
   return activities;
  }

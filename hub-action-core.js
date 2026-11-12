@@ -40,7 +40,7 @@
    return openedBy==='Clari'&&t.fecha<=date&&!closed(t)&&hasOpportunity;
   }).sort(compare);
  }
- function scheduledCapacity(date, classes, events, participants, matches, tournaments, targets) {
+ function scheduledCapacity(date, events, participants, matches, tournaments, targets) {
   const inWindow = day => day >= date && day <= shift(date, 7);
   const activities = [];
   const add = (kind, id, title, day, time, enrolled, unit, fallback) => {
@@ -49,18 +49,6 @@
    activities.push({key, title, day, time: String(time || '').slice(0, 5), enrolled, unit, target,
     missing: target === null ? null : Math.max(0, target - enrolled), fixed: kind === 'partido'});
   };
-  const groups = new Map();
-  for (const c of classes) {
-   if (!inWindow(c.fecha) || /cancel|suspend|ausente/.test(norm(c.estado))) continue;
-   const key = c.fecha + ':' + (c.grupo_id || c.id);
-   if (!groups.has(key)) groups.set(key, []);
-   groups.get(key).push(c);
-  }
-  for (const [key, rows] of groups) {
-   const c = rows[0];
-   add('clase', key, 'Clase', c.fecha, c.hora, new Set(rows.map(row => row.alumno_id)).size, 'alumnos', null);
-   activities.at(-1).studentIds = rows.map(row => row.alumno_id);
-  }
   for (const e of events) {
    if (!inWindow(e.fecha) || e.estado !== 'Activa' || e.finalizado_en || e.archivado_en) continue;
    const enrolled = participants.filter(p => p.cancha_abierta_id === e.id && String(p.nombre || '').trim()).length;
@@ -75,6 +63,27 @@
    }
   }
   return activities.sort((a, b) => (a.day + a.time).localeCompare(b.day + b.time));
+ }
+ function teacherGaps(date, classes) {
+  const groups = new Map();
+  for (const c of classes) {
+   if (!c.profesor_id || c.fecha < date || c.fecha > shift(date, 7) || /cancel|suspend|ausente/.test(norm(c.estado))) continue;
+   const [hour, minute] = String(c.hora || '').split(':').map(Number);
+   if (!Number.isInteger(hour) || hour < 0 || hour > 23 || !Number.isInteger(minute) || minute < 0 || minute > 59) continue;
+   const key = c.fecha + ':' + c.profesor_id;
+   if (!groups.has(key)) groups.set(key, {day:c.fecha, teacherId:c.profesor_id, starts:new Set()});
+   groups.get(key).starts.add(hour * 60 + minute);
+  }
+  const gaps = [];
+  const time = n => String(Math.floor(n / 60)).padStart(2,'0') + ':' + String(n % 60).padStart(2,'0');
+  for (const {day, teacherId, starts} of groups.values()) {
+   const sorted = [...starts].sort((a,b)=>a-b);
+   for (let i=1; i<sorted.length; i++) {
+    const start = sorted[i-1] + 60, end = sorted[i];
+    if (end - start >= 60) gaps.push({day, teacherId, start:time(start), end:time(end)});
+   }
+  }
+  return gaps.sort((a,b)=>(a.day+a.start).localeCompare(b.day+b.start));
  }
  function dailyPlan(date){return [
  ['Clari','08:00',1,'Completar cupos de hoy','Empezá por las actividades con lugares pendientes más próximas. Contactá jugadores compatibles, registrá las confirmaciones en Agenda y actualizá Action para ver cuánto falta.'],
@@ -185,5 +194,5 @@
    }}
   }return Array.from(groups,([titulo,personas])=>({titulo,personas})).sort((a,b)=>a.titulo.localeCompare(b.titulo,'es'));
  }
- return {interestOptions,cleanInterests,validateInterests,interestedContacts,interestLists,priorities,shift,closed,compare,phone,whatsapp,suggest,validate,dailyPlan,scheduledCapacity,mondayOf,weeklySocialTask,clariOpenSales,contacts,coach};
+ return {interestOptions,cleanInterests,validateInterests,interestedContacts,interestLists,priorities,shift,closed,compare,phone,whatsapp,suggest,validate,dailyPlan,scheduledCapacity,teacherGaps,mondayOf,weeklySocialTask,clariOpenSales,contacts,coach};
 });
