@@ -40,19 +40,55 @@
    return openedBy==='Clari'&&t.fecha<=date&&!closed(t)&&hasOpportunity;
   }).sort(compare);
  }
+ function scheduledCapacity(date, classes, events, participants, matches, tournaments, targets) {
+  const inWindow = day => day >= date && day <= shift(date, 7);
+  const activities = [];
+  const add = (kind, id, title, day, time, enrolled, unit, fallback) => {
+   const key = 'meta-cupo:' + kind + ':' + id;
+   const target = Number(targets.get(key)?.notas || fallback) || null;
+   activities.push({key, title, day, time: String(time || '').slice(0, 5), enrolled, unit, target,
+    missing: target === null ? null : Math.max(0, target - enrolled), fixed: kind === 'partido'});
+  };
+  const groups = new Map();
+  for (const c of classes) {
+   if (!inWindow(c.fecha) || /cancel|suspend|ausente/.test(norm(c.estado))) continue;
+   const key = c.fecha + ':' + (c.grupo_id || c.id);
+   if (!groups.has(key)) groups.set(key, []);
+   groups.get(key).push(c);
+  }
+  for (const [key, rows] of groups) {
+   const c = rows[0];
+   add('clase', key, 'Clase', c.fecha, c.hora, new Set(rows.map(row => row.alumno_id)).size, 'alumnos', null);
+   activities.at(-1).studentIds = rows.map(row => row.alumno_id);
+  }
+  for (const e of events) {
+   if (!inWindow(e.fecha) || e.estado !== 'Activa' || e.finalizado_en || e.archivado_en) continue;
+   const enrolled = participants.filter(p => p.cancha_abierta_id === e.id && String(p.nombre || '').trim()).length;
+   add('abierta', e.id, ['Cancha abierta', e.tipo, e.categoria].filter(Boolean).join(' · '), e.fecha, e.hora_inicio, enrolled, 'jugadores', e.cupo_maximo);
+  }
+  for (const [kind, rows] of [['partido', matches], ['torneo', tournaments]]) {
+   for (const row of rows) {
+    const a = row.actividad;
+    if (!a || !inWindow(a.fecha) || row.finalizado_en || row.archivado_en || /cancel|suspend|finaliz/.test(norm(a.estado))) continue;
+    const enrolled = (row.datos?.parejas || []).filter(p => p.estado === 'Inscripta').length;
+    add(kind, row.id, a.titulo || (kind === 'partido' ? 'Partido' : 'Torneo'), a.fecha, a.inicio, enrolled, 'parejas', kind === 'partido' ? 2 : null);
+   }
+  }
+  return activities.sort((a, b) => (a.day + a.time).localeCompare(b.day + b.time));
+ }
  function dailyPlan(date){return [
- ['Clari','08:00',1,'Revisar ocupación de las 3 canchas','Verificar Wona y Planner. Registrar espacios reales de hoy y próximos días con horario, cancha y condiciones. No inferir disponibilidad de las clases solamente.'],
- ['Clari','08:30',1,'Resolver partidos y espacios de hoy','Priorizar partidos incompletos y cancelaciones. Crear una tarea por contacto con propuesta verificada. Registrar nivel y disponibilidad antes de invitar.'],
+ ['Clari','08:00',1,'Completar cupos de hoy','Empezá por las actividades con lugares pendientes más próximas. Contactá jugadores compatibles, registrá las confirmaciones en Agenda y actualizá Action para ver cuánto falta.'],
+ ['Clari','08:30',1,'Resolver bajas y reemplazos','Buscá reemplazos para las actividades próximas que perdieron inscriptos. Priorizá según horario y lugares pendientes.'],
  ['Clari','09:30',1,'Recuperar clientes inactivos','Revisar alumnos y jugadores sin actividad reciente. Consultar qué les gustaría retomar y ofrecer una clase, partido o cancha abierta con horario y cupo verificados. Registrar respuesta y próximo paso.'],
  ['Clari','11:00',2,'Cerrar respuestas de la mañana','Revisar mensajes efectivamente enviados, registrar respuestas y concretar reservas en la agenda. Agendar seguimiento de interesados.'],
  ['Clari','12:00',2,'Generar ventas y reservas','Revisar cupos y horarios disponibles. Ofrecer opciones concretas a clientes inactivos e interesados, y confirmar las reservas aceptadas en Agenda. Dejar las oportunidades abiertas con el próximo paso para Tamy.'],
  ['Clari','14:00',3,'Trabajar reservas de próximos días','Revisar cupos reales de actividades y contactar candidatos compatibles. No repetir contactos con acciones abiertas.'],
  ['Clari','15:30',2,'Preparar pase a Tamy','Actualizar resultado, notas y próximo seguimiento en cada tarea. Reasignar a Tamy lo que deba continuar desde las 16.'],
- ['Tamy','16:00',1,'Cerrar oportunidades abiertas por Clari','Abrir el bloque Para retomar de Clari. Revisar qué ofreció, la última respuesta y el próximo paso. Verificar disponibilidad, retomar la conversación y confirmar la reserva si el cliente acepta.'],
+ ['Tamy','16:00',1,'Completar cupos y cerrar propuestas de Clari','Empezá por los cupos de hoy. Retomá las propuestas de Clari que ayudan a completarlos y registrá los inscriptos confirmados en Agenda.'],
  ['Tamy','17:00',4,'Proponer la próxima visita','Conversar con quienes están en el club. Ofrecer su próxima reserva; registrar preferencias si todavía no confirman.'],
  ['Tamy','18:00',2,'Seguir interesados con respuesta pendiente','Revisar seguimientos acordados y actualizar resultados. No volver a contactar sin revisar el historial.'],
  ['Tamy','19:00',3,'Completar mañana y próximos días','Invitar a cupos y horarios verificados. Usar mensajes preparados con nivel y condiciones reales.'],
- ['Tamy','20:00',4,'Desarrollar la propuesta nueva','Continuar la convocatoria iniciada por Clari o preparar una propuesta con las herramientas. Registrar interesados y qué falta para realizarla.'],
+ ['Tamy','20:00',4,'Revisar si ya se puede abrir una actividad','Usá el panel de cupos. Si todavía quedan lugares o metas por definir, seguí con la agenda existente. Si está completa, elegí una actividad nueva con interesados compatibles.'],
  ['Tamy','21:30',2,'Cerrar turno y dejar próximos pasos','Registrar reservas conseguidas y referencias. Dejar notas y seguimiento para Clari, cambiando fecha y hora al turno correspondiente.']
  ].map(([responsable,hora,prioridad,titulo,motivo])=>({fecha:date,hora,responsable,prioridad,titulo,motivo,tipo:'Tarea',estado:'Pendiente',contacto:'',telefono:'',oferta:'',mensaje:'',notas:'',reserva:'',seguimiento:null,origen:'jornada:'+date+':'+responsable+':'+hora,alumno_id:null})).concat(weeklySocialTask(date)||[]);}
  const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
@@ -66,7 +102,7 @@
   }
   return rows;
  }
- function coach(date,students,classes,players=[],tasks=[],events=[],participants=[]){
+ function coach(date,students,classes,players=[],tasks=[],events=[],participants=[],capacity=null){
   const people=contacts(students,players),ideas=[],used=new Set();
   const eligible=p=>!tasks.some(t=>((p.alumno_id&&t.alumno_id===p.alumno_id)||(phone(p.telefono)&&phone(t.telefono)===phone(p.telefono))||norm(t.contacto)===norm(p.nombre))&&(!closed(t)||String(t.actualizado||t.fecha).slice(0,10)>=shift(date,-7)));
   function add(p,key,titulo,motivo,mensaje,steps,priority=4,extra={}){
@@ -74,17 +110,9 @@
    if(!eligible(p)||used.has(identity)||!phone(p.telefono))return;
    used.add(identity);ideas.push({key,alumno_id:p.alumno_id||null,nombre:p.nombre,contacto:p.nombre,telefono:p.telefono,titulo,motivo,mensaje,steps,prioridad:priority,tipo:'Propuesta',...extra});
   }
-  for(const s of suggest(date,students,classes)){
-   const p=people.find(p=>p.alumno_id===s.alumno_id);if(!p)continue;
-   add(p,s.key,s.titulo+' · '+p.nombre,s.motivo,s.mensaje,[
-    'Leé el historial del contacto y enviá el mensaje preparado. No prometas una recuperación.',
-    'Si responde que sí, pedile dos opciones de día y horario. Anotalas en Resultado / notas.',
-    'Consultá cancha en Wona y profesor disponible. Usá el precio vigente; si falta, pedilo a Administración.',
-    'Ofrecé la opción verificada. Si acepta, registrá la reserva en Agenda y copiá su referencia para marcar Confirmada.'
-   ],s.prioridad);
-  }
   for(const e of events.filter(e=>e.estado==='Activa'&&e.fecha>=date&&e.fecha<=shift(date,7)).sort((a,b)=>(a.fecha+a.hora_inicio).localeCompare(b.fecha+b.hora_inicio))){
-   const enrolled=participants.filter(p=>p.cancha_abierta_id===e.id),seats=Number(e.cupo_maximo)-enrolled.length;
+   const enrolled=participants.filter(p=>p.cancha_abierta_id===e.id);
+   const seats=capacity ? capacity.find(a=>a.key==='meta-cupo:abierta:'+e.id)?.missing : Number(e.cupo_maximo)-enrolled.length;
    if(!(seats>0))continue;
    const category=norm(e.categoria),gender=norm(e.tipo),verified=!!e.wona_reserva_id&&/confirm|sincronizada/.test(norm(e.wona_estado));
    // Only single, unambiguous categories are matched. Suma/combined formats need sporting judgment.
@@ -103,11 +131,20 @@
      ],e.fecha===date?1:3,{oferta:offer});
    }
   }
+  for(const s of suggest(date,students,classes)){
+   const p=people.find(p=>p.alumno_id===s.alumno_id);if(!p)continue;
+   add(p,s.key,s.titulo+' · '+p.nombre,s.motivo,s.mensaje,[
+    'Leé el historial del contacto y enviá el mensaje preparado. No prometas una recuperación.',
+    'Si responde que sí, pedile dos opciones de día y horario. Anotalas en Resultado / notas.',
+    'Consultá cancha en Wona y profesor disponible. Usá el precio vigente; si falta, pedilo a Administración.',
+    'Ofrecé la opción verificada. Si acepta, registrá la reserva en Agenda y copiá su referencia para marcar Confirmada.'
+   ],s.prioridad);
+  }
   // Rotating small batches make new audiences manageable without contacting everyone at once.
   const ordered=people.slice().sort((a,b)=>norm(a.nombre).localeCompare(norm(b.nombre)));
   const offset=ordered.length?Math.floor(Date.parse(date+'T12:00:00Z')/86400000)*5%ordered.length:0;
   const rotated=ordered.slice(offset).concat(ordered.slice(0,offset));
-  for(const p of rotated){
+  for(const p of capacity?.some(a=>a.missing!==0) ? [] : rotated){
    if(ideas.filter(i=>i.key.startsWith('preferencias:')).length>=5)break;
    add(p,'preferencias:'+(p.alumno_id||phone(p.telefono)||norm(p.nombre))+':'+date,'Reunir interesados · '+p.nombre,
     p.categoria?`Tiene categoría ${p.categoria}; falta relevar disponibilidad e interés para crear una actividad nueva.`:'No tiene categoría registrada. Primero reunimos información para organizar una propuesta adecuada.',
@@ -148,5 +185,5 @@
    }}
   }return Array.from(groups,([titulo,personas])=>({titulo,personas})).sort((a,b)=>a.titulo.localeCompare(b.titulo,'es'));
  }
- return {interestOptions,cleanInterests,validateInterests,interestedContacts,interestLists,priorities,shift,closed,compare,phone,whatsapp,suggest,validate,dailyPlan,mondayOf,weeklySocialTask,clariOpenSales,contacts,coach};
+ return {interestOptions,cleanInterests,validateInterests,interestedContacts,interestLists,priorities,shift,closed,compare,phone,whatsapp,suggest,validate,dailyPlan,scheduledCapacity,mondayOf,weeklySocialTask,clariOpenSales,contacts,coach};
 });
